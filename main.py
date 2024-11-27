@@ -27,7 +27,7 @@ class ClassesTableCell(TableCell):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        height_size = [0, 25, 28*2, 29*3, 29.6*4]
+        height_size = [0, 25, 28*2, 29*3, 29.6*4, 29.8*5, 28*6, 28*7, 28*8, 28*9, 28*10, 28*11, 28*12, 28*13, 28*14, 28*15, 30.6*16]
         cell_info = self.text().split("_")
         self.setFixedHeight(height_size[int(cell_info[1])])
         self.setText(cell_info[0])
@@ -50,14 +50,18 @@ class Window(QWidget):
         super().__init__()
         hours = [str(i) for i in range(6, 22)]
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        classes = [
-            ["Lab1_3", "Class1_2", "TEST_2", "Class2_2", "Class3_4", "Lab2_3"],
-            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-            ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
-            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-            ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
-            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-            ]
+        # classes = [
+        #     ["Lab1_3", "Class1_2", "TEST_2", "Class2_2", "Class3_4", "Lab2_3"],
+        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+        #     ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
+        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+        #     ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
+        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+        #     ]
+
+        # Nombre, codigo y grupo
+
+        classes = [['BLANK_16'], ['BLANK_6', 'ELECTRÓNICA ANALÓGICA I_2', 'BLANK_2', 'ELECTROMAGNETISMO_2', 'BLANK_4'], ['BLANK_4', 'ELECTRÓNICA DIGITAL I_2', 'BLANK_2', 'FISICA ESTADO SOLIDO_2', 'BLANK_6'], ['BLANK_6', 'ELECTRÓNICA ANALÓGICA I_2', 'BLANK_2', 'ELECTROMAGNETISMO_2', 'BLANK_4'], ['BLANK_4', 'ELECTRÓNICA DIGITAL I_2', 'BLANK_2', 'FISICA ESTADO SOLIDO_2', 'BLANK_6'], ['BLANK_16']]
 
         self.hours_layout = QVBoxLayout()
         self.daily_layout = QVBoxLayout()
