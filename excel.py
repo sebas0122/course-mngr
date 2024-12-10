@@ -93,5 +93,5 @@ def getWeekSchedule(dataframe, semester):
 # Example usage
 file_path = "data/programacion.xlsx"
 dataframe = read_excel_file(file_path)
-df = getWeekSchedule(dataframe, 5)
+df = getWeekSchedule(dataframe, 7)
 print(df)

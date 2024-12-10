@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget, QLabel
+from excel import read_excel_file, getWeekSchedule
 
 class TableCell(QLabel):
     def __init__(self, *args, **kwargs):
@@ -60,8 +61,11 @@ class Window(QWidget):
         #     ]
 
         # Nombre, codigo y grupo
+        # Example usage
+        file_path = "data/programacion.xlsx"
+        dataframe = read_excel_file(file_path)
+        classes = getWeekSchedule(dataframe, 5)
 
-        classes = [['BLANK_16'], ['BLANK_6', 'ELECTRÓNICA ANALÓGICA I_2', 'BLANK_2', 'ELECTROMAGNETISMO_2', 'BLANK_4'], ['BLANK_4', 'ELECTRÓNICA DIGITAL I_2', 'BLANK_2', 'FISICA ESTADO SOLIDO_2', 'BLANK_6'], ['BLANK_6', 'ELECTRÓNICA ANALÓGICA I_2', 'BLANK_2', 'ELECTROMAGNETISMO_2', 'BLANK_4'], ['BLANK_4', 'ELECTRÓNICA DIGITAL I_2', 'BLANK_2', 'FISICA ESTADO SOLIDO_2', 'BLANK_6'], ['BLANK_16']]
 
         self.hours_layout = QVBoxLayout()
         self.daily_layout = QVBoxLayout()
