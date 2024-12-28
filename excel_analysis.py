@@ -38,11 +38,15 @@ def getCleanData(dataframe):
     
     for column_name, df_materia in dataframe.items():
         if column_name == "MATERIA":
-            for i in range(100):
+            for i in range(len(df_materia)):
+                if type(df_fac[i]) == str:
+                    print(df_fac[i])
                 if type(df_materia[i]) == str:
-                    print(df_fac[i], int(df_dep[i]), df_mat[i], int(df_group[i]), df_materia[i], df_aula[i], df_hora[i])
-                    print(df_fac[i], int(df_dep[i]), df_mat[i], int(df_group[i]), df_materia[i], df_aula[i+1], df_hora[i+1])
-
+                    if type(df_fac[i+1]) == float:
+                        print(df_fac[i], int(df_dep[i]), df_mat[i], int(df_group[i]), df_materia[i], df_aula[i], df_hora[i])
+                        print(df_fac[i], int(df_dep[i]), df_mat[i], int(df_group[i]), df_materia[i], df_aula[i+1], df_hora[i+1])
+                    else:
+                        print(df_fac[i], int(df_dep[i]), df_mat[i], int(df_group[i]), df_materia[i], df_aula[i], df_hora[i])
 
 file_path = "data/A_PROGRAMACION.xlsx"
 dataframe = read_excel_file(file_path)
