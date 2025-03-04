@@ -1,16 +1,6 @@
-# THIS IS THE DEMO FOR DRAG
-
-from PySide6.QtCore import QMimeData, Qt, Signal
-from PySide6.QtGui import QDrag, QPixmap
-from PySide6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QLabel,
-    QMainWindow,
-    QVBoxLayout,
-    QWidget,
-)
-
+from PySide6.QtCore import Qt, QMimeData, Signal
+from PySide6.QtGui import QPixmap, QDrag
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QMainWindow
 
 class DragItem(QLabel):
     def __init__(self, *args, **kwargs):
@@ -39,7 +29,7 @@ class DragItem(QLabel):
 
 class DragWidget(QWidget):
     """
-    Generic list sorting handler.
+    Handles sorting and drag-and-drop of items inside it.
     """
 
     orderChanged = Signal(list)
@@ -101,30 +91,35 @@ class DragWidget(QWidget):
         return data
 
 
-class MainWindow(QMainWindow):
+class Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.drag = DragWidget(orientation=Qt.Orientation.Vertical)
-        for n, l in enumerate(["A", "B", "C", "D"]):
-            item = DragItem(l)
-            item.set_data(n)  # Store the data.
-            self.drag.add_item(item)
 
-        # Print out the changed order.
-        self.drag.orderChanged.connect(print)
+        # Create the main layout for the window
+        self.main_layout = QVBoxLayout()
+
+        # Create the outer drag widget for the grid
+        self.grid_layout = DragWidget(orientation=Qt.Orientation.Vertical)
+
+        # Create the 4 rows
+        for i in range(4):  # 4 rows (A, B, C, D)
+            row_layout = DragWidget(orientation=Qt.Orientation.Horizontal)  # For each row, use a horizontal layout
+            for j in range(3):  # 3 columns
+                label = f"{chr(65+i)}{j+1}"  # Generate labels like A1, A2, A3, ...
+                item = DragItem(label)
+                item.set_data((chr(65+i), j+1))  # Store the row and column info
+                row_layout.add_item(item)
+
+            self.grid_layout.add_item(row_layout)  # Add the row to the grid
 
         container = QWidget()
-        layout = QVBoxLayout()
-        layout.addStretch(1)
-        layout.addWidget(self.drag)
-        layout.addStretch(1)
-        container.setLayout(layout)
+        container.setLayout(self.grid_layout.blayout)  # Set the grid layout as the container layout
 
         self.setCentralWidget(container)
 
 
 app = QApplication([])
-w = MainWindow()
+w = Window()
 w.show()
 
 app.exec()

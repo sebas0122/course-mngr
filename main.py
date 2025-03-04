@@ -1,7 +1,7 @@
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, QMimeData
+from PySide6.QtGui import QPixmap, QDrag
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget, QLabel
-from excel import read_excel_file, getWeekSchedule
+#from excel import read_excel_file, getWeekSchedule
 
 class TableCell(QLabel):
     def __init__(self, *args, **kwargs):
@@ -36,6 +36,14 @@ class ClassesTableCell(TableCell):
     def set_data(self, data):
         self.data = data
 
+    def mouseMoveEvent(self, e):
+        if e.buttons() == Qt.MouseButton.LeftButton:
+            drag = QDrag(self)
+            mime = QMimeData()
+            drag.setMimeData(mime)
+            drag.exec(Qt.DropAction.MoveAction)
+        
+
 class Image(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -48,24 +56,20 @@ class Image(QLabel):
 
 class Window(QWidget):
     def __init__(self):
+
         super().__init__()
+        self.setAcceptDrops(True)
+
         hours = [str(i) for i in range(6, 22)]
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        # classes = [
-        #     ["Lab1_3", "Class1_2", "TEST_2", "Class2_2", "Class3_4", "Lab2_3"],
-        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-        #     ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
-        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-        #     ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
-        #     ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
-        #     ]
-
-        # Nombre, codigo y grupo
-        # Example usage
-        file_path = "data/programacion.xlsx"
-        dataframe = read_excel_file(file_path)
-        classes = getWeekSchedule(dataframe, 5)
-
+        classes = [
+            ["Lab1_3", "Class1_2", "TEST_2", "Class2_2", "Class3_4", "Lab2_3"],
+            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+            ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
+            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+            ["Lab1_3", "Class1_2", "_1", "_1", "Class2_2", "Class3_4", "Lab2_3"],
+            ["Class1_2", "_1", "Lab1_3", "_1", "Lab2_3", "Class3_4", "Class2_2"],
+            ]
 
         self.hours_layout = QVBoxLayout()
         self.daily_layout = QVBoxLayout()
@@ -115,6 +119,33 @@ class Window(QWidget):
         self.general_table.addWidget(days_widget)
 
         self.setLayout(self.general_table)
+
+    def dragEnterEvent(self, e):
+        e.accept()
+
+    def dropEvent(self, e):
+        pos = e.position()
+        widget_moved = e.source()
+        #widget_target = e.sender()
+        self.general_table.removeWidget(widget_moved)
+        #self.general_table.removeWidget(widget_target)
+        print(self.general_table.count())
+
+        for n in range(self.daily_layout.count()):
+            # Get the widget at each index in turn.
+            w = self.daily_layout.itemAt(n).widget()
+            if pos.x() < w.x() + w.size().width() // 2:
+                # We didn't drag past this widget.
+                # insert to the left of it.
+                break
+        else:
+            # We aren't on the left hand side of any widget,
+            # so we're at the end. Increment 1 to insert after.
+            n += 1
+
+        self.general_table.insertWidget(n, widget_moved)
+
+        e.accept()
 
 
 app = QApplication([])
