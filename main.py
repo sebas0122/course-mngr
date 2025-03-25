@@ -71,8 +71,9 @@ class DndHandler:
                 self.target = new_target
 
     def on_release(self, event):
-        x, y = event.x_root, event.y_root
-        print("on_release: x=%d, y=%d" % (x, y))
+        print("on_release: x=%d, y=%d" % (event.x, event.y))
+        print("on_release: x=%d, y=%d" % (event.x_root, event.y_root))
+        print(self.source.get_name())
         self.finish(event, 1)
 
     def cancel(self, event=None):
@@ -162,6 +163,9 @@ class Icon:
     def dnd_end(self, target, event):
         pass
 
+    def get_name(self):
+        return self.name
+
 class Tester:
 
     def __init__(self, root):
@@ -210,7 +214,7 @@ def test():
     i2 = Icon("ICON2")
     i3 = Icon("ICON3")
     i1.attach(t1.canvas)
-    i2.attach(t2.canvas)
+    i2.attach(t1.canvas)
     i3.attach(t3.canvas)
     root.mainloop()
 
