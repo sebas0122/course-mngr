@@ -5,6 +5,8 @@ geometry_y = 600
 padding_factor = 0.001
 unit_cell_factor_x = 0.008
 unit_cell_factor_y = 0.008
+xlimit = []
+ylimit = []
 
 # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
 # class_hours, hours must add 16
@@ -54,6 +56,17 @@ class dnd_label:
         elif self.label.winfo_y() + self.label.winfo_height() > geometry_y:
             self.label.place(x=self.label.winfo_x(), y=geometry_y - self.label.winfo_height())
 
+        # Check if it is moved out of the grid
+        diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
+        index_x = diff_x.index(min(diff_x))
+        diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
+        index_y = diff_y.index(min(diff_y))
+        print("Difference in target:", diff_x, index_x, diff_y, index_y)
+        if index_x < 0 or index_y < 0:
+            self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
+        else:
+            self.label.place(x=xlimit[index_x], y=ylimit[index_y])
+
 def insert_ver_divider(window, x, y, w, h):
     label = Label(window, width=w, height=h, bg="black")
     label.place(x=x, y=y)
@@ -68,22 +81,19 @@ window.geometry(f"{geometry_x}x{geometry_y}")
 but = Button(command=window.quit, text="Quit")
 but.place(x=0, y=0)
 
-
-# Draw schedule's hours
-w = int(window.winfo_width() * unit_cell_factor_x)
-h = int(window.winfo_height() * unit_cell_factor_y)
-print(w,h)
-
 # Add labels for hours
 for hour in range(6, 22):
     label = Label(window, text=f"{hour}:00", bg="white", width=10, height=1, borderwidth=2, relief="raised")
     label.place(x=0, y=(hour-4)*25)
+    ylimit.append((hour-4)*25)
 
 # Add labels for days
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
 for day in range(6):
-    label = Label(window, text=days[day], bg="white", width=10, height=1)
+    label = Label(window, text=days[day], bg="white", width=10, height=1, borderwidth=2, relief="raised")
     label.place(x=(day+1)*100, y=0)
+    xlimit.append((day+1)*100)
 
 # Add classes
 i = 0
@@ -91,7 +101,7 @@ for day in classes:
     j=0
     for cl in day:
         temp = cl.split("_")
-        dnd_label(temp[0], "red", 10, int(temp[1]), (i+1)*100, (j+2)*25)
+        dnd_label(text=temp[0], bg_color="red", w=10, h=int(temp[1]), posx=(i+1)*100, posy=(j+2)*25)
         j+=int(temp[1])
     i+=1
 
