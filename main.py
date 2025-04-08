@@ -2,9 +2,7 @@ from tkinter import *
 
 geometry_x = 1200
 geometry_y = 600
-padding_factor = 0.001
-unit_cell_factor_x = 0.008
-unit_cell_factor_y = 0.008
+
 xlimit = []
 ylimit = []
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -30,9 +28,10 @@ labs = [
 ]
 
 class dnd_label:
-    def __init__(self, text, bg_color, w, h, posx, posy, hours):
+    def __init__(self, text, bg_color, w, h, posx, posy, hours, type):
         self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised")
         self.hours = hours
+        self.type = type
         self.label.place(x=posx, y=posy)
         self.label.bind("<Button-1>", self.on_press)
         self.label.bind("<B1-Motion>", self.on_drag)
@@ -67,23 +66,26 @@ class dnd_label:
             self.label.place(x=self.label.winfo_x(), y=geometry_y - self.label.winfo_height())
 
         # Check if it is moved out of the grid
-        diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
-        index_x = diff_x.index(min(diff_x))
-        diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
-        index_y = diff_y.index(min(diff_y))
-        print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
-        if index_x < 0 or index_y < 0:
-            self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
-        else:
-            self.label.place(x=xlimit[index_x], y=ylimit[index_y])
-
-def insert_ver_divider(window, x, y, w, h):
-    label = Label(window, width=w, height=h, bg="black")
-    label.place(x=x, y=y)
-    label.pack()
-
-def insert_hor_divider(canvas, x, y, w, h):
-    canvas.create_line(x, y, w, h, fill="black")
+        if self.type == "class":
+            diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
+            index_x = diff_x.index(min(diff_x))
+            diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
+            index_y = diff_y.index(min(diff_y))
+            print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
+            if index_x < 0 or index_y < 0:
+                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
+            else:
+                self.label.place(x=xlimit[index_x], y=ylimit[index_y])
+        elif self.type == "lab":
+            diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
+            index_x = diff_x.index(min(diff_x))
+            diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
+            index_y = diff_y.index(min(diff_y))
+            print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
+            if index_x < 0 or index_y < 0:
+                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
+            else:
+                self.label.place(x=xlimit[index_x]+90, y=ylimit[index_y])
 
 window = Tk()
 
@@ -117,7 +119,7 @@ for day in classes:
     for cl in day:
         temp = cl.split("_")
         if temp[0]!='blank':
-            dnd_label(text=temp[0], bg_color="gray", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i], posy=(j+2)*25, hours=int(temp[1]))
+            dnd_label(text=temp[0], bg_color="gray", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i], posy=(j+2)*25, hours=int(temp[1]), type="class")
         j+=int(temp[1])
     i+=1
 
@@ -127,8 +129,9 @@ for day in labs:
     j=0
     for cl in day:
         temp = cl.split("_")
+        print(temp)
         if temp[0]!='blank':
-            dnd_label(text=temp[0], bg_color="green", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i]+88, posy=(j+2)*25, hours=int(temp[1]))
+            dnd_label(text=temp[0], bg_color="green", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i]+90, posy=(j+2)*25, hours=int(temp[1]), type="lab")
         j+=int(temp[1])
     i+=1
 
