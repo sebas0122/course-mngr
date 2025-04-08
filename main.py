@@ -1,28 +1,38 @@
 from tkinter import *
 
-geometry_x = 800
+geometry_x = 1200
 geometry_y = 600
 padding_factor = 0.001
 unit_cell_factor_x = 0.008
 unit_cell_factor_y = 0.008
 xlimit = []
 ylimit = []
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
 # class_hours, hours must add 16
 classes = [
-    ["class1_2", "class2_2", "class3_12"],
-    ["class1_1", "class2_1", "class3_14"],
-    ["class1_3", "class2_3", "class3_13"],
-    ["class1_4", "class2_4", "class3_8"],
-    ["class1_5", "class2_5", "class3_6"],
-    ["class1_6", "class2_6", "class3_4"],
-    
+    ["class2_2", "blank_2", "class3_3", "blank_5", "class4_4"],
+    ["class2_2", "class2_2", "blank_4", "class_2"],
+    ["class2_2", "blank_2", "class4_4", "class3_3", "blank_2", "class3_3"],
+    ["class2_2", "class2_2", "blank_4", "class_2"],
+    ["class5_5", "blank_5", "class6_6"],
+    ["class2_2"],
+]
+
+labs = [
+    ["lab3_3", "blank_6", "lab3_3", "lab2_2"],
+    ["blank_2", "lab3_3", "lab3_3", "lab3_3"],
+    ["blank_4", "lab3_3", "lab3_3"],
+    ["blank_2", "lab3_3", "lab3_3", "lab3_3"],
+    ["lab3_3", "blank_6", "lab3_3", "lab2_2"],
+    ["blank_4", "lab2_2"],
 ]
 
 class dnd_label:
-    def __init__(self, text, bg_color, w, h, posx, posy):
-        self.label = Label(window, text=text, bg=bg_color, width=w, height=h)
+    def __init__(self, text, bg_color, w, h, posx, posy, hours):
+        self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised")
+        self.hours = hours
         self.label.place(x=posx, y=posy)
         self.label.bind("<Button-1>", self.on_press)
         self.label.bind("<B1-Motion>", self.on_drag)
@@ -61,7 +71,7 @@ class dnd_label:
         index_x = diff_x.index(min(diff_x))
         diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
         index_y = diff_y.index(min(diff_y))
-        print("Difference in target:", diff_x, index_x, diff_y, index_y)
+        print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
         if index_x < 0 or index_y < 0:
             self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
         else:
@@ -88,12 +98,17 @@ for hour in range(6, 22):
     ylimit.append((hour-4)*25)
 
 # Add labels for days
-days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-
 for day in range(6):
-    label = Label(window, text=days[day], bg="white", width=10, height=1, borderwidth=2, relief="raised")
-    label.place(x=(day+1)*100, y=0)
-    xlimit.append((day+1)*100)
+    label = Label(window, text=days[day], bg="white", width=21, height=1, borderwidth=2, relief="raised")
+    label.place(x=(day+1)*100+80*day, y=0)
+    xlimit.append((day+1)*100+80*day)
+
+# Add rooms and labs
+for xl in xlimit:
+    room = Label(window, text="Room", bg="white", width=10, height=1, borderwidth=2, relief="raised")
+    room.place(x=xl, y=25)
+    lab = Label(window, text="Lab", bg="white", width=10, height=1, borderwidth=2, relief="raised")
+    lab.place(x=xl+88, y=25)
 
 # Add classes
 i = 0
@@ -101,7 +116,19 @@ for day in classes:
     j=0
     for cl in day:
         temp = cl.split("_")
-        dnd_label(text=temp[0], bg_color="red", w=10, h=int(temp[1]), posx=(i+1)*100, posy=(j+2)*25)
+        if temp[0]!='blank':
+            dnd_label(text=temp[0], bg_color="gray", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i], posy=(j+2)*25, hours=int(temp[1]))
+        j+=int(temp[1])
+    i+=1
+
+# Add labs
+i = 0
+for day in labs:
+    j=0
+    for cl in day:
+        temp = cl.split("_")
+        if temp[0]!='blank':
+            dnd_label(text=temp[0], bg_color="green", w=10, h=int(temp[1])+int(int(temp[1])*0.4), posx=xlimit[i]+88, posy=(j+2)*25, hours=int(temp[1]))
         j+=int(temp[1])
     i+=1
 
