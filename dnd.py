@@ -21,18 +21,17 @@ labs = [
     ["blank_4", "lab3_3", "lab3_3"],
     ["blank_2", "lab3_3", "lab3_3", "lab3_3"],
     ["lab3_3", "blank_6", "lab3_3", "lab2_2"],
-    ["blank_4", "lab2_2"],
+    ["blank_4", "lab2_2", "lab1_1"],
 ]
 
 class dnd_label:
-    def __init__(self, window, geometry):
-        self.window = window
-        self.geometry_x = geometry[0]
-        self.geometry_y = geometry[1]
+    def __init__(self, window, geometry_width, geometry_height, text, bg_color, w, h, posx, posy, hours, type):
+        self.geometry_x = geometry_width
+        self.geometry_y = geometry_height
 
-    def add_label(self, text, bg_color, w, h, posx, posy, hours):
-        self.label = Label(self.window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised")
+        self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised")
         self.hours = hours
+        self.type = type
         self.label.place(x=posx, y=posy)
         self.label.bind("<Button-1>", self.on_press)
         self.label.bind("<B1-Motion>", self.on_drag)
@@ -67,12 +66,25 @@ class dnd_label:
             self.label.place(x=self.label.winfo_x(), y=self.geometry_y - self.label.winfo_height())
 
         # Check if it is moved out of the grid
-        diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
-        index_x = diff_x.index(min(diff_x))
-        diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
-        index_y = diff_y.index(min(diff_y))
-        print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
-        if index_x < 0 or index_y < 0:
-            self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
-        else:
-            self.label.place(x=xlimit[index_x], y=ylimit[index_y])
+        print(xlimit)
+        if self.type == "class":
+            diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
+            index_x = diff_x.index(min(diff_x))
+            diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
+            index_y = diff_y.index(min(diff_y))
+            print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
+            if index_x < 0 or index_y < 0:
+                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
+            else:
+                self.label.place(x=xlimit[index_x], y=ylimit[index_y])
+        
+        elif self.type == "lab":
+            diff_x = [abs(x - self.label.winfo_x()) for x in xlimit]
+            index_x = diff_x.index(min(diff_x))
+            diff_y = [abs(y - self.label.winfo_y()) for y in ylimit]
+            index_y = diff_y.index(min(diff_y))
+            print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00')
+            if index_x < 0 or index_y < 0:
+                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y())
+            else:
+                self.label.place(x=xlimit[index_x]+90, y=ylimit[index_y])
