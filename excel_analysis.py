@@ -66,7 +66,7 @@ def getCleanData(dataframe):
                 if type(df_fac[i]) == str:
                     if df_fac[i][-1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
                         nivel = df_fac[i][-1]
-                        if nivel == '3':
+                        if nivel == '4':
                             break
                     else:
                         nivel = 0
@@ -80,23 +80,23 @@ def getCleanData(dataframe):
                             ])
                         #Teoria
                         for_db.append([df_materia[i], int(df_fac[i]), int(df_dep[i]), df_ide[i],
-                                               int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
-                                               getHoursLong(df_hora[i+1]), 0, electiva, True,
-                                               f'{df_hora[i]}', int(df_prof_id[i]), df_aula[i]])
+                                        int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
+                                        getHoursLong(df_hora[i+1]), 0, electiva, True,
+                                        f'{df_hora[i]}', int(df_prof_id[i]), df_aula[i]])
                         #Práctica
                         for_db.append([df_materia[i], int(df_fac[i]), int(df_dep[i]), df_ide[i],
-                                               int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), getHoursLong(df_hora[i]),
-                                               getHoursLong(df_hora[i+1]), 0, electiva, True,
-                                               f'{df_hora[i+1]}', int(df_prof_id[i+1]), df_aula[i+1]])
-                    # else:
-                    #     courses.append([
-                    #         str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
-                    #         int(df_group[i]), df_materia[i], df_aula[i], df_hora[i]
-                    #         ])
-                    #     for_db.append([df_materia[i], int(df_fac[i]), int(df_dep[i]), df_ide[i],
-                    #                            int(df_mat[i]), 'T', int(nivel), getHoursLong(df_hora[i]),
-                    #                            0, 0, electiva, False, df_hora[i], df_prof_id[i],
-                    #                            df_aula[i], 'NO'])
+                                        int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), getHoursLong(df_hora[i]),
+                                        getHoursLong(df_hora[i+1]), 0, electiva, True,
+                                        f'{df_hora[i+1]}', int(df_prof_id[i+1]), df_aula[i+1]])
+                    else:
+                        courses.append([
+                            str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
+                            int(df_group[i]), df_materia[i], df_aula[i], df_aula[i+1], df_hora[i], df_hora[i+1]
+                            ])
+                        #Teoria
+                        for_db.append([df_materia[i], int(df_fac[i]), int(df_dep[i]), df_ide[i],
+                                        int(df_mat[i]), int(df_group[i]), 'T', False, int(nivel), getHoursLong(df_hora[i]),
+                                        0, 0, electiva, True, f'{df_hora[i]}', int(df_prof_id[i]), df_aula[i]])
     print(for_db)
 
 # days, _, duration = getClassSchedule("L8-10|M14-16")
