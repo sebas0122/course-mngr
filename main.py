@@ -75,6 +75,10 @@ def add_classes_labs(classes, labs):
 lbs_ids = add_classes_labs(classes_list, labs_list) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
+
+## change_level function
+# This function is called when the user selects a level from the dropdown menu. It updates the schedule with the classes and labs for the selected level.
+# It takes no parameters and returns nothing because it modifies the global variable lbs_ids.
 def change_level():
     global lbs_ids
     lbl.config(text=opt.get())
