@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+from courses_functions import getHoursLong, getClassSchedule
 
 def read_excel_file(file_path):
     try:
@@ -8,58 +9,6 @@ def read_excel_file(file_path):
         return df
     except Exception as e:
         print(f"An error occurred: {e}")
-
-## getClassSchedule function
-# This function takes a string with the format "L1-2|M3-4|W5-6" and returns a list of days, start hours, and class duration.
-# It splits the string by "|" and then processes each part to extract the day, start hour, and duration.
-# It takes the following parameter:
-# - days_hours_string: a string with the format "L1-2|M3-4|W5-6"
-# Returns:
-# - days: a list of days in Spanish (Lunes, Martes, etc.)
-# - start_hours: a list of start hours for each class
-# - class_duration: a list of class durations for each class
-def getClassSchedule(days_hours_string):
-    days_dict = {"L": "Lunes", "M": "Martes", "W": "Miércoles", "J": "Jueves", "V": "Viernes", "S": "Sábado", "D": "Domingo"} ##< Dictionary to map letters to days in Spanish
-    days_hours_list = days_hours_string.split("|") ##< Split the string by "|"
-    days = []
-    start_hours = []
-    class_duration = []
-    for sch in days_hours_list:
-        if sch != "":
-            if sch[1] not in days_dict:
-                days.append(days_dict[sch[0]]) ##< Add the day to the list
-                start_hours.append(sch[1:].split("-")[0]) ##< Add the start hour to the list
-                class_duration.append(int(sch[1:].split("-")[1]) - int(sch[1:].split("-")[0])) ##< Add the class duration to the list
-            else:
-                days.append(days_dict[sch[0]]) ##< Add the day to the list
-                days.append(days_dict[sch[1]]) ##< Add the second day to the list 
-                start_hours.append(sch[2:].split("-")[0]) ##< Add the start hour to the list
-                class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list
-
-    return days, start_hours, class_duration
-
-## getHoursLong function
-# This function takes a string with the format "L1-2|M3-4|W5-6" and returns the total number of hours for all classes.
-# It checks if the string contains "|" and processes it accordingly.
-# It takes the following parameter:
-# - days_hours_string: a string with the format "L1-2|M3-4|W5-6"
-# Returns:
-# - total_hours: an integer representing the total number of hours for all classes
-# If the string is not in the expected format, it returns 0.
-def getHoursLong(days_hours_string):
-    try:
-        if "|" in days_hours_string: ##< Check if the string contains "|"
-            _, _, x = getClassSchedule(days_hours_string) ##< Get the class duration
-            return int(sum(x)) ##< Return the total number of hours
-        else:
-            letters = ["L", "M", "W", "J", "V", "S", "D"] ##< List of letters representing days
-            if days_hours_string[1] in letters: ##< Check if the second character is a letter
-                x = days_hours_string[2:].split("-") ##< Split the string to get the start and end hours
-            else:
-                x = days_hours_string[1:].split("-") ##< Split the string to get the start and end hours
-            return int(x[1]) - int(x[0]) ##< Return the difference between the end and start hours
-    except:
-        return 0 ##< Return 0 if there is an error in processing the string
 
 ## getCleanData function
 # This function takes a DataFrame and processes it to extract relevant information for the database.
@@ -108,6 +57,10 @@ def getCleanData(dataframe):
                         continue ##< Skip the iteration if the value in the CUPO column is 0, means the course is not available
                     materia_limpia = df_materia[i].replace('\n', '') ##< Clean the MATERIA column value by removing new line characters
                     print(materia_limpia)
+                    if materia_limpia == 'PROG DISPOSITIVOS MÓVIL':
+                        break
+                    # if 'É' in materia_limpia: ##< Check if the MATERIA column value contains "É"
+                    #     materia_limpia = materia_limpia.replace('É', 'E') ##< Replace "É" with "E"
                     if int(df_dep[i]) == 47 or int(df_dep[i]) == 98: ##< Check if the value in the DEP column is 47 or 98, indicating a specific department
                         es_dpt = True
                     if "|" in str(df_prof_id[i]): ##< Check if the value in the CÉDULA column contains "|", indicating multiple professors
