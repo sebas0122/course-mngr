@@ -25,26 +25,6 @@ labs_list = [
     ["blank_4", "lab2_2", "lab1_1"],
 ] ##< labs contains the labs for each day of the week, coded as <lab name>_<number of hours>. The blank elements are used to create free space in the grid. First list is Monday, second is Tuesday, and so on. The number of hours must add maximum 16, which is the total number of hours in the schedule.
 
-classes_list2 = [
-    
-    ["class2_2", "blank_2", "class4_4", "class3_3", "blank_2", "class3_3"],
-    ["class2_2", "class2_2", "blank_4", "class_2"],
-    ["class5_5", "blank_5", "class6_6"],
-    ["class2_2", "blank_5", "class1_1"],
-    ["class2_2", "class2_2", "blank_4", "class2_2"],
-    ["class2_2", "blank_2", "class3_3", "blank_5", "class4_4"]
-]
-
-labs_list2 = [
-    ["blank_2", "lab3_3", "lab3_3", "lab3_3"],
-    ["lab3_3", "blank_6", "lab3_3", "lab2_2"],
-    ["blank_4", "lab2_2", "lab1_1"],
-    ["blank_4", "lab3_3", "lab3_3"],
-    ["blank_2", "lab3_3", "lab3_3", "lab3_3"],
-    ["lab3_3", "blank_6", "lab3_3", "lab2_2"]
-]
-
-
 lab_displacement = 91 ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
 ## dnd_label class
@@ -74,7 +54,7 @@ class dnd_label:
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
 
-        self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised") ##< Create the label
+        self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised", wraplength=60) ##< Create the label
         self.hours = hours ##< The number of hours the label will occupy in the grid
         self.type = type   ##< The type of the label (class or lab)
         self.label.place(x=posx, y=posy) ##< Set the position of the label

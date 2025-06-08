@@ -64,16 +64,15 @@ def getCleanData(dataframe):
                     if int(df_dep[i]) == 47 or int(df_dep[i]) == 98: ##< Check if the value in the DEP column is 47 or 98, indicating a specific department
                         es_dpt = True
                     if "|" in str(df_prof_id[i]): ##< Check if the value in the CÉDULA column contains "|", indicating multiple professors
-                        prof_id     = int(df_prof_id[i].split("|")[0]) ##< Get the first part of the CÉDULA column value as the prof_id
-                        sec_prof_id = int(df_prof_id[i].split("|")[1]) ##< Get the second part of the CÉDULA column value as the sec_prof_id
+                        profs_id     = [int(p) for p in df_prof_id[i].split("|")] ##< Get the first part of the CÉDULA column value as the prof_id
+                        print(profs_id)
                     else:
-                        prof_id     = int(df_prof_id[i]) ##< Get the CÉDULA column value as the prof_id
-                        sec_prof_id = None ##< Set sec_prof_id to None if there is no second part in the CÉDULA column value
+                        profs_id     = [int(df_prof_id[i])] ##< Get the CÉDULA column value as the prof_id
                         if type(df_fac[i+1]) == float: ##< Check if the next value in the FAC column is a float, indicating a lab
                             try:
-                                lab_prof_id = int(df_prof_id[i+1]) ##< Get the next CÉDULA column value as the lab_prof_id
+                                lab_prof_id = [int(df_prof_id[i+1])] ##< Get the next CÉDULA column value as the lab_prof_id
                             except:
-                                lab_prof_id = int(df_prof_id[i]) ##< Set lab_prof_id to the current CÉDULA column value if there is an error in conversion
+                                lab_prof_id = [int(df_prof_id[i])] ##< Set lab_prof_id to the current CÉDULA column value if there is an error in conversion
                     
                     if type(df_fac[i+1]) == float: ##< Check if the next value in the FAC column is a float, indicating a lab
                         courses.append([
@@ -84,12 +83,12 @@ def getCleanData(dataframe):
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
                                         getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i]}', prof_id, sec_prof_id, str(df_aula[i])])
+                                        f'{df_hora[i]}', profs_id, str(df_aula[i])])
                         # Append the course lab information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), getHoursLong(df_hora[i]),
                                         getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i+1]}', lab_prof_id, sec_prof_id, str(df_aula[i+1])])
+                                        f'{df_hora[i+1]}', lab_prof_id, str(df_aula[i+1])])
                     else: ##< If the next value in the FAC column is not a float, indicating a theory course
                         courses.append([
                             str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
@@ -98,7 +97,7 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T', False, int(nivel), getHoursLong(df_hora[i]),
-                                        0, 0, electiva, es_dpt, f'{df_hora[i]}', prof_id, sec_prof_id, str(df_aula[i])])
+                                        0, 0, electiva, es_dpt, f'{df_hora[i]}', profs_id, str(df_aula[i])])
     print(for_db)
     return for_db
 
@@ -176,4 +175,4 @@ def write_db_to_file(template_file, out_db_file, data):
 file_path = "data/prog.xlsx"
 dataframe = read_excel_file(file_path)
 db_df = getCleanData(dataframe)
-write_db_to_file("data/table_template.log", "data/db.log", db_df)
+write_db_to_file("data/table_template.log", "data/db_test.log", db_df)

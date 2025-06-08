@@ -75,7 +75,8 @@ def add_classes_labs(classes, labs):
 
     return labels_ids ##< Return the list of labels ids
 
-lbs_ids = add_classes_labs(getClassesList(dataframe, 1), labs_list) ##< Call the function to add classes and labs to the schedule
+c, l = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
+lbs_ids = add_classes_labs(c, l) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
 
@@ -97,9 +98,24 @@ def change_level():
 
     # Add classes and labs to the schedule based on the selected level
     if opt.get() == "Level 1":
-        lbs_ids = add_classes_labs(getClassesList(dataframe, 1), labs_list) ##< Call the function to add classes and labs to the schedule
+        c, l = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Level 2":
-        lbs_ids = add_classes_labs(getClassesList(dataframe, 2), labs_list2) ##< Call the function to add classes and labs to the schedule
+        c, l = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
+    elif opt.get() == "Level 3":
+        c, l = getClassesList(dataframe, 3)
+    elif opt.get() == "Level 4":
+        c, l = getClassesList(dataframe, 4)
+    elif opt.get() == "Level 5":
+        c, l = getClassesList(dataframe, 5)
+    elif opt.get() == "Level 6":
+        c, l = getClassesList(dataframe, 6)
+    elif opt.get() == "Level 7":
+        c, l = getClassesList(dataframe, 7)
+    elif opt.get() == "Level 8":
+        c, l = getClassesList(dataframe, 8)
+    elif opt.get() == "Level 9":
+        c, l = getClassesList(dataframe, 9)
+    lbs_ids = add_classes_labs(c, l)
 
 # Dropdown options
 level = ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6", "Level 7", "Level 8", "Level 9"] 

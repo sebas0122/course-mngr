@@ -77,37 +77,10 @@ def connectSQL():
     df = pd.read_sql(query, engine)
     return df
 
-def getClassesList(df, semester):
-    df_semestre_1 = df[df['nivel'] == semester]
+def reorganizeClassesList(cl_li):
 
-    week_days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    classes_list = cl_li.copy()
 
-    classes_list = [
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
-    ]
-
-    for index, row in df_semestre_1.iterrows():
-        # Get the values of the columns "codigo" and "nombre"
-        horario = row['horario']
-        days, st_hours, class_duration = getClassSchedule(horario)
-        nombre = row['nombre']
-        for i in range(len(days)):
-            if row['es_lab'] == False:
-                
-                if f'{nombre}_{st_hours[i]}_{class_duration[i]}' not in classes_list[week_days.index(days[i])]:
-                    # Append the class to the corresponding day in the classes_list
-                    classes_list[week_days.index(days[i])].append(f'{nombre}_{st_hours[i]}_{class_duration[i]}')
-
-                    # Insert blank slots for spacing between classes
-                    day_classes = classes_list[week_days.index(days[i])]
-
-                    # Ensure sorting is done before inserting blanks
-                    day_classes.sort(key=lambda x: int(x.split('_')[1]))
     for day_classes in classes_list:
         # Insert blank at the start if first class starts after 6
         if day_classes != []:
@@ -138,5 +111,46 @@ def getClassesList(df, semester):
             if not parts[0].startswith('blank'):
                 # Set duration to the original duration for this class
                 cl[k] = f"{parts[0]}_{parts[2]}"
-
+    
     return classes_list
+
+
+def getClassesList(df, semester):
+    df_semestre_1 = df[df['nivel'] == semester]
+
+    week_days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+    classes_list = [[],[],[],[],[],[]]
+    labs_list = [[],[],[],[],[],[]]
+
+    for index, row in df_semestre_1.iterrows():
+        # Get the values of the columns "codigo" and "nombre"
+        horario = row['horario']
+        days, st_hours, class_duration = getClassSchedule(horario)
+        nombre = row['nombre']
+        for i in range(len(days)):
+            if row['es_lab'] == False:
+                if f'{nombre}_{st_hours[i]}_{class_duration[i]}' not in classes_list[week_days.index(days[i])]:
+                    # Append the class to the corresponding day in the classes_list
+                    classes_list[week_days.index(days[i])].append(f'{nombre}_{st_hours[i]}_{class_duration[i]}')
+
+                    # Insert blank slots for spacing between classes
+                    day_classes = classes_list[week_days.index(days[i])]
+
+                    # Ensure sorting is done before inserting blanks
+                    day_classes.sort(key=lambda x: int(x.split('_')[1]))
+            else:
+                if f'{nombre}_{st_hours[i]}_{class_duration[i]}' not in labs_list[week_days.index(days[i])]:
+                    # Append the lab to the corresponding day in the labs_list
+                    labs_list[week_days.index(days[i])].append(f'{nombre}_{st_hours[i]}_{class_duration[i]}')
+
+                    # Insert blank slots for spacing between labs
+                    day_labs = labs_list[week_days.index(days[i])]
+
+                    # Ensure sorting is done before inserting blanks
+                    day_labs.sort(key=lambda x: int(x.split('_')[1]))
+
+    classes_list = reorganizeClassesList(classes_list)
+    labs_list = reorganizeClassesList(labs_list)  
+
+    return classes_list, labs_list
