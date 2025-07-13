@@ -3,12 +3,10 @@ from tkinter import *
 xlimit = [] ##< xlimit is to locate x positions of the labels in the grid
 ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
 
-cell_h = {1: 0, 2: 3, 3: 5, 4: 6, 5: 8, 6: 10} ##< cell_h is to set the height of the labels in the grid, where the key is the number of hours and the value is the height in pixels
-
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] ##< days is to set the names of the days of the week
 
 classes_list = [
-    ["class2_2", "blank_2", "class3_3", "blank_5", "class4_4"],
+    ["class2_2,1,2,3", "blank_2", "class3_3,3,4,5", "blank_5", "class4_4"],
     ["class2_2", "class2_2", "blank_4", "class_2"],
     ["class2_2", "blank_2", "class4_4", "class3_3", "blank_2", "class3_3"],
     ["class2_2", "class2_2", "blank_4", "class2_2"],
@@ -24,8 +22,6 @@ labs_list = [
     ["lab3_3", "blank_6", "lab3_3", "lab2_2"],
     ["blank_4", "lab2_2", "lab1_1"],
 ] ##< labs contains the labs for each day of the week, coded as <lab name>_<number of hours>. The blank elements are used to create free space in the grid. First list is Monday, second is Tuesday, and so on. The number of hours must add maximum 16, which is the total number of hours in the schedule.
-
-lab_displacement = 91 ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
 ## dnd_label class
 #
@@ -50,13 +46,30 @@ class dnd_label:
     # @param posy: The y position of the label.
     # @param hours: The number of hours the label will occupy in the grid.
     # @param type: The type of the label (class or lab).
-    def __init__(self, window, geometry_width, geometry_height, text, bg_color, w, h, posx, posy, hours, type):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, info_label):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
+        self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
 
-        self.label = Label(window, text=text, bg=bg_color, width=w, height=h, borderwidth=2, relief="raised", wraplength=60) ##< Create the label
+        self.label = Label(window,
+                           image=image,
+                           text=text,
+                           font=("Arial", 7),
+                           bg=bg_color,
+                           width=w,
+                           height=h,
+                           wraplength=70,
+                           compound="center") ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
+        
         self.hours = hours ##< The number of hours the label will occupy in the grid
         self.type = type   ##< The type of the label (class or lab)
+        self.info_label = info_label ##< The label where the information of the course/lab will be displayed when the label is pressed
+        self.course_code = "252647" ##< Get the course code from the text
+        self.groups = [1, 2, 3] ##< Initialize the list of groups for the label
+        self.proffessors = ["Juan", "Carlos"] ##< Initialize the list of professors for the label
+        self.proffessors_ids = ["123456", "654321"] ##< Initialize the list of professors ids for the label
+
+
         self.label.place(x=posx, y=posy) ##< Set the position of the label
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
@@ -69,8 +82,9 @@ class dnd_label:
     def on_press(self, event):
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
-
+        
         ## Shows in GUI the information of the course/lab being moved
+        self.info_label.config(text=f"Código de materia: {self.course_code}\t\t\tProfesores: {', '.join(self.proffessors)}\n\nGrupos: {', '.join(map(str, self.groups))}\t\t\t\tID Profesores: {', '.join(self.proffessors_ids)}\n\nTipo de materia: Teoría") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
     
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.
@@ -115,7 +129,7 @@ class dnd_label:
                 self.label.place(x=xlimit[index_x], y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid.
         
         elif self.type == "lab": ##< Check if the label is a lab
-            diff_x = [abs(x - self.label.winfo_x() + lab_displacement) for x in xlimit] ##< Get the difference between the x position of the label and the x positions of the grid, adding the lab displacement to the x position of the label
+            diff_x = [abs(x - self.label.winfo_x() + self.lab_displacement) for x in xlimit] ##< Get the difference between the x position of the label and the x positions of the grid, adding the lab displacement to the x position of the label
             index_x = diff_x.index(min(diff_x)) ##< Get the index of the minimum difference in the x axis. This gives the closest x (day) position in the grid to the label.
             diff_y = [abs(y - self.label.winfo_y()) for y in ylimit] ##< Get the difference between the y position of the label and the y positions of the grid
             index_y = diff_y.index(min(diff_y)) ##< Get the index of the minimum difference in the y axis. This gives the closest y (hour) position in the grid to the label.
@@ -123,4 +137,4 @@ class dnd_label:
             if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
                 self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
             else:
-                self.label.place(x=xlimit[index_x]+lab_displacement, y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid, adding the lab displacement to the x position of the label.
+                self.label.place(x=xlimit[index_x]+self.lab_displacement, y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid, adding the lab displacement to the x position of the label.
