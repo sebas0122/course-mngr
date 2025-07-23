@@ -158,6 +158,8 @@ def write_db_to_file(template_file, out_db_file, data):
                     item_write = f"'{item}'"
                 elif isinstance(item, bool):
                     item_write = "true" if item else "false"
+                elif isinstance(item, list):
+                    item_write = "'{" + ", ".join(map(str, item)) + "}'"
                 elif item is None:
                     item_write = "null"
                 else:
@@ -175,4 +177,5 @@ def write_db_to_file(template_file, out_db_file, data):
 file_path = "data/prog.xlsx"
 dataframe = read_excel_file(file_path)
 db_df = getCleanData(dataframe)
-write_db_to_file("data/table_template.log", "data/db_test.log", db_df)
+print(db_df)
+write_db_to_file("data/table_template.log", "data/db_test2.log", db_df)

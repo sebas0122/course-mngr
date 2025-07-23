@@ -109,7 +109,7 @@ separator.place(x=xlimit[-1]+single_width+lab_displacement, y=single_height, hei
 # - labs: a list of labs for each day
 # Returns:
 # - labels_ids: a list of labels ids for the classes and labs added to the schedule
-def add_classes_labs(classes, labs):
+def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
     labels_ids = [] ##< Initialize the list of labels ids
     # Add classes (rooms) to schedule
     i = 0 ##< Initialize the index for xlimit
@@ -132,8 +132,9 @@ def add_classes_labs(classes, labs):
                           posy=ylimit[j],
                           hours=int(temp[1]),
                           type="class",
-                          info_label=information_label) ##< Create the drag&drop label for the class
-                
+                          info_label=information_label,
+                          cl_info=cl_information_label) ##< Create the drag&drop label for the class
+
                 labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
             j+=int(temp[1]) ##< Increment the index for ylimit by the number of hours of the class
         i+=1 ##< Increment the index for xlimit by 1
@@ -159,16 +160,24 @@ def add_classes_labs(classes, labs):
                           posy=ylimit[j],
                           hours=int(temp[1]),
                           type="lab",
-                          info_label=information_label) ##< Create the drag&drop label for the lab
-                
+                          info_label=information_label,
+                          cl_info=lb_information_label) ##< Create the drag&drop label for the lab
+
                 labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
             j+=int(temp[1]) ##< Increment the index for ylimit by the number of hours of the lab
         i+=1 ##< Increment the index for xlimit by 1
 
     return labels_ids ##< Return the list of labels ids
 
-c, l = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
-lbs_ids = add_classes_labs(c, l) ##< Call the function to add classes and labs to the schedule
+c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
+# print("X Limits: ", xlimit) ##< Print the x limits
+# print("X Limits: ", [x / xlimit[0] for x in xlimit]) ##< Print the x limits
+# print("Y Limits: ", ylimit) ##< Print the y limits
+# print("Classes:", c) ##< Print the classes
+# print("Labs:", l) ##< Print the labs
+# print("Class Info:", c_info) ##< Print the class info
+# print("Lab Info:", l_info) ##< Print the lab info
+lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
 

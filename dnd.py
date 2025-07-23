@@ -4,6 +4,7 @@ xlimit = [] ##< xlimit is to locate x positions of the labels in the grid
 ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
 
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] ##< days is to set the names of the days of the week
+days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"] ##< days_es is to set the names of the days of the week in Spanish
 
 classes_list = [
     ["class2_2,1,2,3", "blank_2", "class3_3,3,4,5", "blank_5", "class4_4"],
@@ -46,7 +47,7 @@ class dnd_label:
     # @param posy: The y position of the label.
     # @param hours: The number of hours the label will occupy in the grid.
     # @param type: The type of the label (class or lab).
-    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, info_label):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, info_label, cl_info):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
@@ -59,11 +60,13 @@ class dnd_label:
                            width=w,
                            height=h,
                            wraplength=70,
+                           relief="solid",
                            compound="center") ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
         
         self.hours = hours ##< The number of hours the label will occupy in the grid
         self.type = type   ##< The type of the label (class or lab)
         self.info_label = info_label ##< The label where the information of the course/lab will be displayed when the label is pressed
+        self.cl_info = cl_info ##< The class information dictionary to be used in the info label
         self.course_code = "252647" ##< Get the course code from the text
         self.groups = [1, 2, 3] ##< Initialize the list of groups for the label
         self.proffessors = ["Juan", "Carlos"] ##< Initialize the list of professors for the label
@@ -82,9 +85,13 @@ class dnd_label:
     def on_press(self, event):
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
+
+        nombre = self.label.cget("text") ##< Get the text of the label
+        key_info = f'{nombre}_{int(6+(self.label.winfo_y()-40)/20)}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
+        print(self.cl_info[key_info]) ##< Print the class information dictionary for the label being moved
         
         ## Shows in GUI the information of the course/lab being moved
-        self.info_label.config(text=f"Código de materia: {self.course_code}\t\t\tProfesores: {', '.join(self.proffessors)}\n\nGrupos: {', '.join(map(str, self.groups))}\t\t\t\tID Profesores: {', '.join(self.proffessors_ids)}\n\nTipo de materia: Teoría") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\tProfesores: {', '.join(self.proffessors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
     
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.
