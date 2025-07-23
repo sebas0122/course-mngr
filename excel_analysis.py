@@ -2,9 +2,9 @@ import pandas as pd
 import re
 from courses_functions import getHoursLong, getClassSchedule
 
-def read_excel_file(file_path):
+def read_excel_file(file_path, sheet_name="PROGRAMACION_2025_1"):
     try:
-        df = pd.read_excel(file_path, sheet_name="PROGRAMACION_2025_1")
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
         print("Excel file read successfully!")
         return df
     except Exception as e:
@@ -174,8 +174,44 @@ def write_db_to_file(template_file, out_db_file, data):
             # Close the insert statement
             file.write(");\n")
 
+def getProfessorsData(dataframe):
+    """
+    This function extracts professors' data from the DataFrame and returns it as a list of dictionaries.
+    Each dictionary contains the professor's ID, name, and email.
+    """
+    professors = []
+    df_prof_id = dataframe["CÉDULA"]
+    df_prof_name = dataframe["NOMBRE"]
+    df_prof_email = dataframe["CORREO"]
+
+    for i in range(len(df_prof_id)):
+        if pd.notna(df_prof_id[i]) and pd.notna(df_prof_name[i]) and pd.notna(df_prof_email[i]):
+            professors.append([
+                int(df_prof_id[i]),
+                df_prof_name[i].strip(),
+                df_prof_email[i].strip()
+            ])
+    
+    return professors
+
+def write_prof_db_to_file(template_file, out_db_file, data):
+    with open(template_file, "r", encoding="utf-8") as template:
+        template_content = template.read()
+
+    # Write the data to the output database file
+    with open(out_db_file, "w", encoding="utf-8") as file:
+        file.write(template_content)  # Write the template content to the output file
+        file.write("\n\n")  # Add a new line after the template content
+        for prof in data:  # Iterate over the data
+            file.write("insert into profesores (identificacion, nombre, correo) values (")  # Write the insert statement with the table name and column names
+            file.write(f"{prof[0]}, '{prof[1]}', '{prof[2]}');\n")
+
 file_path = "data/prog.xlsx"
-dataframe = read_excel_file(file_path)
-db_df = getCleanData(dataframe)
-print(db_df)
-write_db_to_file("data/table_template.log", "data/db_test2.log", db_df)
+# dataframe = read_excel_file(file_path)
+# db_df = getCleanData(prof_dataframe)
+# print(db_df)
+# write_db_to_file("data/table_template.log", "data/db.log", db_df)
+
+prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
+professors_data = getProfessorsData(prof_dataframe)
+write_prof_db_to_file("data/prof_table_template.log", "data/prof_db.log", professors_data)

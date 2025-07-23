@@ -1,4 +1,5 @@
 from tkinter import *
+from courses_functions import getProfessorsData
 
 xlimit = [] ##< xlimit is to locate x positions of the labels in the grid
 ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
@@ -67,12 +68,6 @@ class dnd_label:
         self.type = type   ##< The type of the label (class or lab)
         self.info_label = info_label ##< The label where the information of the course/lab will be displayed when the label is pressed
         self.cl_info = cl_info ##< The class information dictionary to be used in the info label
-        self.course_code = "252647" ##< Get the course code from the text
-        self.groups = [1, 2, 3] ##< Initialize the list of groups for the label
-        self.proffessors = ["Juan", "Carlos"] ##< Initialize the list of professors for the label
-        self.proffessors_ids = ["123456", "654321"] ##< Initialize the list of professors ids for the label
-
-
         self.label.place(x=posx, y=posy) ##< Set the position of the label
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
@@ -87,11 +82,12 @@ class dnd_label:
         self.y = event.y ##< Get the y position of the mouse
 
         nombre = self.label.cget("text") ##< Get the text of the label
-        key_info = f'{nombre}_{int(6+(self.label.winfo_y()-40)/20)}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
-        print(self.cl_info[key_info]) ##< Print the class information dictionary for the label being moved
+        key_info = f'{nombre}_{int(6+(self.label.winfo_y()-48)/24)}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
+        profs = getProfessorsData() ##< Get the professors data from the database
+        professors = [profs[f'{id}']['name'] for id in self.cl_info[key_info]['profesor']] ##< Create an empty list to store the professors of the course/lab
         
         ## Shows in GUI the information of the course/lab being moved
-        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\tProfesores: {', '.join(self.proffessors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
     
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.

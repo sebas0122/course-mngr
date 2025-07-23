@@ -56,8 +56,13 @@ def getHoursLong(days_hours_string):
             return int(x[1]) - int(x[0]) ##< Return the difference between the end and start hours
     except:
         return 0 ##< Return 0 if there is an error in processing the string
-    
-def connectSQL():
+
+## connectSQL function
+# This function connects to a PostgreSQL database and retrieves data from the "materias" table.
+# It uses SQLAlchemy to create a connection and pandas to read the data into a DataFrame.
+# It takes the following parameter:
+# - table: the name of the table to retrieve data from
+def connectSQL(table):
     uid = 'postgres'
     pwd = 'UdeA_elecNtelDPT*'
     host = 'localhost'
@@ -70,13 +75,21 @@ def connectSQL():
     engine = create_engine(connection_string)
 
     # Execute a query to get the data from table "materias"
-    query = """
-    SELECT * FROM materias
+    query = f"""
+    SELECT * FROM {table}
     """
     # Read the data into a pandas DataFrame
     df = pd.read_sql(query, engine)
     return df
 
+## reorganizeClassesList function
+# This function takes a list of classes for each day and reorganizes it by inserting blanks where necessary.
+# It ensures that the classes are sorted by start hour and that there are no gaps between classes.
+# It takes the following parameter:
+# - cl_li: a list of lists, where each inner list contains class strings in the format "class_startHour_duration"
+# Returns:
+# - classes_list: a list of lists, where each inner list contains reorganized class strings
+# The reorganized classes are sorted by start hour and have blanks inserted where necessary.
 def reorganizeClassesList(cl_li):
 
     classes_list = cl_li.copy()
@@ -114,7 +127,10 @@ def reorganizeClassesList(cl_li):
     
     return classes_list
 
-
+## getClassesList function
+# This function takes a DataFrame and a semester level, and returns lists of classes and labs for each day of the week.
+# It processes the DataFrame to extract class information, including the name, code, professor, and group.
+# It also creates dictionaries to map class and lab keys to their respective information.
 def getClassesList(df, semester):
     df_semestre_1 = df[df['nivel'] == semester]
 
@@ -144,10 +160,11 @@ def getClassesList(df, semester):
             }
             if row['es_lab'] == False:
                 if key_info in class_info_dict:
-                    # If the class already exists, update the info
-                    gr = class_info_dict[key_info]['grupo']
-                    gr.append(grupo)  # Append the new group to the existing one
-                    class_info_dict[key_info]['grupo'] = gr
+                    if grupo not in class_info_dict[key_info]['grupo']:
+                        # If the class already exists, update the info
+                        gr = class_info_dict[key_info]['grupo']
+                        gr.append(grupo)  # Append the new group to the existing one
+                        class_info_dict[key_info]['grupo'] = gr
                 if key not in classes_list[week_days.index(days[i])]:
                     classes_list[week_days.index(days[i])].append(key)
                     class_info_dict[key_info] = info
@@ -155,10 +172,11 @@ def getClassesList(df, semester):
                     day_classes.sort(key=lambda x: int(x.split('_')[1]))
             else:
                 if key in lab_info_dict:
-                    # If the lab already exists, update the info
-                    gr = lab_info_dict[key_info]['grupo']
-                    gr.append(grupo)  # Append the new group to the existing one
-                    lab_info_dict[key_info]['grupo'] = gr
+                    if grupo not in lab_info_dict[key_info]['grupo']:
+                        # If the lab already exists, update the info
+                        gr = lab_info_dict[key_info]['grupo']
+                        gr.append(grupo)  # Append the new group to the existing one
+                        lab_info_dict[key_info]['grupo'] = gr
                 if key not in labs_list[week_days.index(days[i])]:
                     labs_list[week_days.index(days[i])].append(key)
                     lab_info_dict[key_info] = info
@@ -169,3 +187,23 @@ def getClassesList(df, semester):
     labs_list = reorganizeClassesList(labs_list)  
 
     return classes_list, labs_list, class_info_dict, lab_info_dict
+
+def getProfessorsData():
+    dataframe = connectSQL("profesores")  # Ensure the connection is established
+    """
+    This function extracts professors' data from the DataFrame and returns it as a list of dictionaries.
+    Each dictionary contains the professor's ID, name, and email.
+    """
+    professors = {}
+    df_prof_id = dataframe["identificacion"]
+    df_prof_name = dataframe["nombre"]
+    df_prof_email = dataframe["correo"]
+
+    for i in range(len(df_prof_id)):
+        if pd.notna(df_prof_id[i]) and pd.notna(df_prof_name[i]) and pd.notna(df_prof_email[i]):
+            professors[str(int(df_prof_id[i]))] = {
+                'name': df_prof_name[i].strip(),
+                'email': df_prof_email[i].strip()
+            }
+
+    return professors

@@ -1,9 +1,9 @@
 from tkinter import *
 from tkinter import ttk
 from dnd import *
-from courses_functions import connectSQL, getClassesList
+from courses_functions import connectSQL, getClassesList, getProfessorsData
 
-dataframe = connectSQL() ##< Connect to the database and get the data
+dataframe = connectSQL("materias") ##< Connect to the database and get the data
 
 window = Tk() ##< Create a window
 
@@ -21,7 +21,7 @@ quit_button = Button(window, text="Quit", background="red", command=window.quit)
 quit_button.place(x=int(screen_width*(14/15)), y=0) ##< Set the position of the quit button
 
 single_width = int(screen_width / 15) #int(0.0078125*screen_width) ##< Set the width of a single cell
-single_height = int(screen_height / 35) #int(0.001389*screen_height) ##< Set the height of a single cell
+single_height = int(screen_height / 30) #int(0.001389*screen_height) ##< Set the height of a single cell
 
 lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
@@ -172,11 +172,11 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
 c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
 # print("X Limits: ", xlimit) ##< Print the x limits
 # print("X Limits: ", [x / xlimit[0] for x in xlimit]) ##< Print the x limits
-# print("Y Limits: ", ylimit) ##< Print the y limits
+print("Y Limits: ", ylimit) ##< Print the y limits
 # print("Classes:", c) ##< Print the classes
 # print("Labs:", l) ##< Print the labs
 # print("Class Info:", c_info) ##< Print the class info
-# print("Lab Info:", l_info) ##< Print the lab info
+print("Lab Info:", l_info.keys()) ##< Print the lab info
 lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
@@ -199,24 +199,24 @@ def change_level():
 
     # Add classes and labs to the schedule based on the selected level
     if opt.get() == "Level 1":
-        c, l = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Level 2":
-        c, l = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Level 3":
-        c, l = getClassesList(dataframe, 3)
+        c, l, c_info, l_info = getClassesList(dataframe, 3)
     elif opt.get() == "Level 4":
-        c, l = getClassesList(dataframe, 4)
+        c, l, c_info, l_info = getClassesList(dataframe, 4)
     elif opt.get() == "Level 5":
-        c, l = getClassesList(dataframe, 5)
+        c, l, c_info, l_info = getClassesList(dataframe, 5)
     elif opt.get() == "Level 6":
-        c, l = getClassesList(dataframe, 6)
+        c, l, c_info, l_info = getClassesList(dataframe, 6)
     elif opt.get() == "Level 7":
-        c, l = getClassesList(dataframe, 7)
+        c, l, c_info, l_info = getClassesList(dataframe, 7)
     elif opt.get() == "Level 8":
-        c, l = getClassesList(dataframe, 8)
+        c, l, c_info, l_info = getClassesList(dataframe, 8)
     elif opt.get() == "Level 9":
-        c, l = getClassesList(dataframe, 9)
-    lbs_ids = add_classes_labs(c, l)
+        c, l, c_info, l_info = getClassesList(dataframe, 9)
+    lbs_ids = add_classes_labs(c, l, c_info, l_info)
 
 # Dropdown options
 level = ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6", "Level 7", "Level 8", "Level 9"] 
