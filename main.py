@@ -20,8 +20,8 @@ pixel = PhotoImage(width=1, height=1)
 quit_button = Button(window, text="Quit", background="red", command=window.quit) ##< Create a quit button
 quit_button.place(x=int(screen_width*(14/15)), y=0) ##< Set the position of the quit button
 
-single_width = int(screen_width / 15) #int(0.0078125*screen_width) ##< Set the width of a single cell
-single_height = int(screen_height / 30) #int(0.001389*screen_height) ##< Set the height of a single cell
+single_width = int(screen_width / 15) ##< Set the width of a single cell
+single_height = int(screen_height / 30) ##< Set the height of a single cell
 
 lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
@@ -170,13 +170,6 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
     return labels_ids ##< Return the list of labels ids
 
 c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
-# print("X Limits: ", xlimit) ##< Print the x limits
-# print("X Limits: ", [x / xlimit[0] for x in xlimit]) ##< Print the x limits
-print("Y Limits: ", ylimit) ##< Print the y limits
-# print("Classes:", c) ##< Print the classes
-# print("Labs:", l) ##< Print the labs
-# print("Class Info:", c_info) ##< Print the class info
-print("Lab Info:", l_info.keys()) ##< Print the lab info
 lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection

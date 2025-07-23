@@ -83,11 +83,13 @@ class dnd_label:
 
         nombre = self.label.cget("text") ##< Get the text of the label
         key_info = f'{nombre}_{int(6+(self.label.winfo_y()-48)/24)}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
+        print(f'on press: {key_info}') ##< Print the key info of the label being moved
+        self.key_info = key_info ##< Create a key to access the class information
         profs = getProfessorsData() ##< Get the professors data from the database
         professors = [profs[f'{id}']['name'] for id in self.cl_info[key_info]['profesor']] ##< Create an empty list to store the professors of the course/lab
         
         ## Shows in GUI the information of the course/lab being moved
-        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
     
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.
@@ -126,6 +128,17 @@ class dnd_label:
             diff_y = [abs(y - self.label.winfo_y()) for y in ylimit] ##< Get the difference between the y position of the label and the y positions of the grid
             index_y = diff_y.index(min(diff_y)) ##< Get the index of the minimum difference in the y axis. This gives the closest y (hour) position in the grid to the label.
             print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00') ##< Print the position of the label when it is released
+
+            nombre = self.label.cget("text") ##< Get the text of the label
+            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
+
+            if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
+                print(f'on release: {key_info}') ##< Print the key info of the label being moved
+                self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
+                print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
+                del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
+                print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
+
             if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
                 self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
             else:
@@ -137,6 +150,17 @@ class dnd_label:
             diff_y = [abs(y - self.label.winfo_y()) for y in ylimit] ##< Get the difference between the y position of the label and the y positions of the grid
             index_y = diff_y.index(min(diff_y)) ##< Get the index of the minimum difference in the y axis. This gives the closest y (hour) position in the grid to the label.
             print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00') ##< Print the position of the label when it is released
+
+            nombre = self.label.cget("text") ##< Get the text of the label
+            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
+
+            if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
+                print(f'on release: {key_info}') ##< Print the key info of the label being moved
+                self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
+                print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
+                del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
+                print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
+
             if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
                 self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
             else:
