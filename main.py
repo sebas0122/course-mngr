@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from dnd import *
-from courses_functions import connectSQL, getClassesList, getProfessorsData
+from courses_functions import connectSQL, getClassesList, getProfessorsData, update_schedule_in_db
 
 dataframe = connectSQL("materias") ##< Connect to the database and get the data
 
@@ -20,8 +20,8 @@ pixel = PhotoImage(width=1, height=1)
 quit_button = Button(window, text="Quit", background="red", command=window.quit) ##< Create a quit button
 quit_button.place(x=int(screen_width*(14/15)), y=0) ##< Set the position of the quit button
 
-single_width = int(screen_width / 15) #int(0.0078125*screen_width) ##< Set the width of a single cell
-single_height = int(screen_height / 30) #int(0.001389*screen_height) ##< Set the height of a single cell
+single_width = int(screen_width / 15) ##< Set the width of a single cell
+single_height = int(screen_height / 30) ##< Set the height of a single cell
 
 lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
@@ -170,13 +170,6 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
     return labels_ids ##< Return the list of labels ids
 
 c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
-# print("X Limits: ", xlimit) ##< Print the x limits
-# print("X Limits: ", [x / xlimit[0] for x in xlimit]) ##< Print the x limits
-print("Y Limits: ", ylimit) ##< Print the y limits
-# print("Classes:", c) ##< Print the classes
-# print("Labs:", l) ##< Print the labs
-# print("Class Info:", c_info) ##< Print the class info
-print("Lab Info:", l_info.keys()) ##< Print the lab info
 lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
@@ -185,8 +178,9 @@ lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add cl
 # This function is called when the user selects a level from the dropdown menu. It updates the schedule with the classes and labs for the selected level.
 # It takes no parameters and returns nothing because it modifies the global variable lbs_ids.
 def change_level():
-    global lbs_ids
-    lbl.config(text=opt.get())
+    global lbs_ids, c_info, l_info
+
+    dataframe = connectSQL("materias") ##< Connect to the database and get the data
 
     # Destroy all dnd_labels
     for widget in window.winfo_children():
@@ -198,41 +192,50 @@ def change_level():
                 widget.destroy()
 
     # Add classes and labs to the schedule based on the selected level
-    if opt.get() == "Level 1":
+    if opt.get() == "Nivel 1":
         c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
-    elif opt.get() == "Level 2":
+    elif opt.get() == "Nivel 2":
         c, l, c_info, l_info = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
-    elif opt.get() == "Level 3":
+    elif opt.get() == "Nivel 3":
         c, l, c_info, l_info = getClassesList(dataframe, 3)
-    elif opt.get() == "Level 4":
+    elif opt.get() == "Nivel 4":
         c, l, c_info, l_info = getClassesList(dataframe, 4)
-    elif opt.get() == "Level 5":
+    elif opt.get() == "Nivel 5":
         c, l, c_info, l_info = getClassesList(dataframe, 5)
-    elif opt.get() == "Level 6":
+    elif opt.get() == "Nivel 6":
         c, l, c_info, l_info = getClassesList(dataframe, 6)
-    elif opt.get() == "Level 7":
+    elif opt.get() == "Nivel 7":
         c, l, c_info, l_info = getClassesList(dataframe, 7)
-    elif opt.get() == "Level 8":
+    elif opt.get() == "Nivel 8":
         c, l, c_info, l_info = getClassesList(dataframe, 8)
-    elif opt.get() == "Level 9":
+    elif opt.get() == "Nivel 9":
         c, l, c_info, l_info = getClassesList(dataframe, 9)
     lbs_ids = add_classes_labs(c, l, c_info, l_info)
 
 # Dropdown options
-level = ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6", "Level 7", "Level 8", "Level 9"] 
+level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9"] 
 
 # Selected option variable  
-opt = StringVar(value="Level 1")
+opt = StringVar(value="Nivel 1")
 
 # Dropdown menu  
 dd_menu = OptionMenu(window, opt, *level)
-dd_menu.place(x=int(screen_width*(14/15)), y=int(screen_height/12)) ##< Set the position of the quit button
+dd_menu.place(x=int(screen_width*(14/15)), y=single_height*2) ##< Set the position of the quit button
 
 # Button to update label  
-dd_button = Button(window, text="Aceptar", command=change_level)
-dd_button.place(x=int(screen_width*(14/15)), y=int(screen_height/8)) ##< Set the position of the quit button
+dd_button = Button(window, text="Aceptar", command=change_level, background="lightblue")
+dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the position of the quit button
 
-lbl = Label(window, text=" ")  
-lbl.place(x=int(screen_width*(14/15)), y=int(screen_height/6)) ##< Set the position of the quit button
+# Button for adding a new class
+add_button = Button(window, text="Añadir\nClase", background="lightyellow")
+add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the position of the quit button
+
+def update_database():
+    print(c_info)
+    update_schedule_in_db(c_info, False) ##< Function to update the database with the current schedule
+    update_schedule_in_db(l_info, True) ##< Function to update the database with the current schedule
+# Button for updating database
+update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
+update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 
 window.mainloop() ##< Start the main loop of the window
