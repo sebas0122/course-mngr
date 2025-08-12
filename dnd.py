@@ -81,16 +81,22 @@ class dnd_label:
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
 
+        print("Class dictionary: ", self.cl_info)
+
         nombre = self.label.cget("text") ##< Get the text of the label
-        key_info = f'{nombre}_{int(6+(self.label.winfo_y()-48)/24)}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
+        nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
+        key_info = f'{nombre}_{int(6+((self.label.winfo_y()-ylimit[0])/(ylimit[0]/2)))}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
         print(f'on press: {key_info}') ##< Print the key info of the label being moved
         self.key_info = key_info ##< Create a key to access the class information
         profs = getProfessorsData() ##< Get the professors data from the database
         professors = [profs[f'{id}']['name'] for id in self.cl_info[key_info]['profesor']] ##< Create an empty list to store the professors of the course/lab
         
         ## Shows in GUI the information of the course/lab being moved
-        self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
-    
+        if(len(self.cl_info[key_info]['grupo'])>5):
+            self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\t\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+        else:
+            self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.
     # It takes the following parameters:
@@ -130,6 +136,7 @@ class dnd_label:
             # print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00') ##< Print the position of the label when it is released
 
             nombre = self.label.cget("text") ##< Get the text of the label
+            nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
             key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
@@ -152,6 +159,7 @@ class dnd_label:
             # print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00') ##< Print the position of the label when it is released
 
             nombre = self.label.cget("text") ##< Get the text of the label
+            nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
             key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed

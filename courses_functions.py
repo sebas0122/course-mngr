@@ -142,20 +142,24 @@ def getClassesList(df, semester):
     lab_info_dict = {}    # NEW: maps 'lab_2' -> info dict
 
     for index, row in df_semestre_1.iterrows():
+        id = row['id']
         horario = row['horario']
         days, st_hours, class_duration = getClassSchedule(horario)
         nombre = row['nombre']
         codigo = str(row['facultad']) + str(row['dependencia']) + str(row['materia'])
         profesor = row['profesor']  # adjust to your column name
         grupo = row['grupo']  # adjust to your column name
+        aula = row['aula']  # adjust to your column name
         for i in range(len(days)):
-            key = f'{nombre}_{st_hours[i]}_{class_duration[i]}'
+            key = f'{nombre}\n[{grupo}]_{st_hours[i]}_{class_duration[i]}'
             key_info = f'{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}'  # Unique key for class or lab info
             info = {
+                'id': id,
                 'nombre': nombre,
                 'codigo': codigo,
                 'profesor': profesor,
                 'grupo': [grupo],
+                'aula': aula
                 # add more fields as needed
             }
             if row['es_lab'] == False:
@@ -163,9 +167,16 @@ def getClassesList(df, semester):
                     if grupo not in class_info_dict[key_info]['grupo']:
                         # If the class already exists, update the info
                         gr = class_info_dict[key_info]['grupo']
+                        old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}'
+
                         gr.append(grupo)  # Append the new group to the existing one
                         class_info_dict[key_info]['grupo'] = gr
-                if key not in classes_list[week_days.index(days[i])]:
+
+                        
+                        idx = classes_list[week_days.index(days[i])].index(old_key)
+                        new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}'
+                        classes_list[week_days.index(days[i])][idx] = new_key
+                elif key not in classes_list[week_days.index(days[i])]:
                     classes_list[week_days.index(days[i])].append(key)
                     class_info_dict[key_info] = info
                     day_classes = classes_list[week_days.index(days[i])]
