@@ -82,51 +82,6 @@ def connectSQL(table):
     df = pd.read_sql(query, engine)
     return df
 
-## reorganizeClassesList function
-# This function takes a list of classes for each day and reorganizes it by inserting blanks where necessary.
-# It ensures that the classes are sorted by start hour and that there are no gaps between classes.
-# It takes the following parameter:
-# - cl_li: a list of lists, where each inner list contains class strings in the format "class_startHour_duration"
-# Returns:
-# - classes_list: a list of lists, where each inner list contains reorganized class strings
-# The reorganized classes are sorted by start hour and have blanks inserted where necessary.
-def reorganizeClassesList(cl_li):
-
-    classes_list = cl_li.copy()
-
-    for day_classes in classes_list:
-        # Insert blank at the start if first class starts after 6
-        if day_classes != []:
-            first_hour = int(day_classes[0].split('_')[1])
-            if first_hour > 6:
-                day_classes.insert(0, f'blank_{first_hour - 6}')
-            # Insert blanks between classes
-            j = 1
-            while j < len(day_classes):
-                prev_hour = int(day_classes[j - 1].split('_')[1])
-                prev_hour_dur = 0
-                if not day_classes[j - 1].startswith('blank'):
-                    prev_hour_dur = int(day_classes[j - 1].split('_')[2])
-                curr_hour = int(day_classes[j].split('_')[1])
-                # print(f'Checking gap between {day_classes[j - 1]} and {day_classes[j]}: prev_hour={prev_hour}, curr_hour={curr_hour}, prev_hour_dur={prev_hour_dur}')
-                if curr_hour - prev_hour - prev_hour_dur> 0:
-                    # Only insert blank if not already a blank
-                    if not day_classes[j - 1].startswith('blank') and not day_classes[j].startswith('blank'):
-                        day_classes.insert(j, f'blank_{curr_hour - prev_hour - prev_hour_dur}')
-                        j += 1
-                j += 1
-
-                    
-    # Replace class duration with the correct duration for all classes in the day's list
-    for cl in classes_list:
-        for k in range(len(cl)):
-            parts = cl[k].split('_')
-            if not parts[0].startswith('blank'):
-                # Set duration to the original duration for this class
-                cl[k] = f"{parts[0]}_{parts[2]}"
-    
-    return classes_list
-
 ## getClassesList function
 # This function takes a DataFrame and a semester level, and returns lists of classes and labs for each day of the week.
 # It processes the DataFrame to extract class information, including the name, code, professor, and group.
@@ -151,8 +106,11 @@ def getClassesList(df, semester):
         grupo = row['grupo']  # adjust to your column name
         aula = row['aula']  # adjust to your column name
         for i in range(len(days)):
-            key = f'{nombre}\n[{grupo}]_{st_hours[i]}_{class_duration[i]}'
-            key_info = f'{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}'  # Unique key for class or lab info
+            
+            key = f'{nombre}\n[{grupo}]_{st_hours[i]}_{class_duration[i]}_{aula}'
+            
+            key_info = f'{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}_{aula}'  # Unique key for class or lab info
+            
             info = {
                 'id': id,
                 'nombre': nombre,
@@ -162,40 +120,38 @@ def getClassesList(df, semester):
                 'aula': aula
                 # add more fields as needed
             }
-            if row['es_lab'] == False:
+            
+            if row['es_lab'] == False:  # If it's a class
                 if key_info in class_info_dict:
-                    if grupo not in class_info_dict[key_info]['grupo']:
-                        # If the class already exists, update the info
-                        gr = class_info_dict[key_info]['grupo']
-                        old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}'
+                    # If the class already exists, update the info
+                    gr = class_info_dict[key_info]['grupo']
+                    old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
 
-                        gr.append(grupo)  # Append the new group to the existing one
-                        class_info_dict[key_info]['grupo'] = gr
+                    gr.append(grupo)  # Append the new group to the existing one
+                    class_info_dict[key_info]['grupo'] = gr
 
-                        
-                        idx = classes_list[week_days.index(days[i])].index(old_key)
-                        new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}'
-                        classes_list[week_days.index(days[i])][idx] = new_key
-                elif key not in classes_list[week_days.index(days[i])]:
-                    classes_list[week_days.index(days[i])].append(key)
+
+                    idx = classes_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
+                    new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
+                    classes_list[week_days.index(days[i])][idx] = new_key # Update the classes list with the new key
+                else:
                     class_info_dict[key_info] = info
-                    day_classes = classes_list[week_days.index(days[i])]
-                    day_classes.sort(key=lambda x: int(x.split('_')[1]))
+                    classes_list[week_days.index(days[i])].append(key)
             else:
-                if key in lab_info_dict:
-                    if grupo not in lab_info_dict[key_info]['grupo']:
-                        # If the lab already exists, update the info
-                        gr = lab_info_dict[key_info]['grupo']
-                        gr.append(grupo)  # Append the new group to the existing one
-                        lab_info_dict[key_info]['grupo'] = gr
-                if key not in labs_list[week_days.index(days[i])]:
-                    labs_list[week_days.index(days[i])].append(key)
-                    lab_info_dict[key_info] = info
-                    day_labs = labs_list[week_days.index(days[i])]
-                    day_labs.sort(key=lambda x: int(x.split('_')[1]))
+                if key_info in lab_info_dict:
+                    # If the lab already exists, update the info
+                    gr = lab_info_dict[key_info]['grupo']
+                    old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
 
-    classes_list = reorganizeClassesList(classes_list)
-    labs_list = reorganizeClassesList(labs_list)  
+                    gr.append(grupo)
+                    lab_info_dict[key_info]['grupo'] = gr
+
+                    idx = labs_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
+                    new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
+                    labs_list[week_days.index(days[i])][idx] = new_key # Update the labs list with the new key
+                else:
+                    lab_info_dict[key_info] = info
+                    labs_list[week_days.index(days[i])].append(key)
 
     return classes_list, labs_list, class_info_dict, lab_info_dict
 

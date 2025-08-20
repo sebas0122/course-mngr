@@ -48,7 +48,7 @@ class dnd_label:
     # @param posy: The y position of the label.
     # @param hours: The number of hours the label will occupy in the grid.
     # @param type: The type of the label (class or lab).
-    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, info_label, cl_info):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
@@ -66,6 +66,7 @@ class dnd_label:
         
         self.hours = hours ##< The number of hours the label will occupy in the grid
         self.type = type   ##< The type of the label (class or lab)
+        self.room = room   ##< The room where the class/lab is held
         self.info_label = info_label ##< The label where the information of the course/lab will be displayed when the label is pressed
         self.cl_info = cl_info ##< The class information dictionary to be used in the info label
         self.label.place(x=posx, y=posy) ##< Set the position of the label
@@ -81,11 +82,12 @@ class dnd_label:
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
 
-        print("Class dictionary: ", self.cl_info)
-
         nombre = self.label.cget("text") ##< Get the text of the label
+        grupos = list(map(int, nombre.split("\n")[1].strip("[]").split(",")))
+        print(f'Grupos: {grupos}')
         nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
-        key_info = f'{nombre}_{int(6+((self.label.winfo_y()-ylimit[0])/(ylimit[0]/2)))}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}'
+
+        key_info = f'{nombre}_{int(6+((self.label.winfo_y()-ylimit[0])/(ylimit[0]/2)))}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}_{self.room}' ##< Create a key to access the class information
         print(f'on press: {key_info}') ##< Print the key info of the label being moved
         self.key_info = key_info ##< Create a key to access the class information
         profs = getProfessorsData() ##< Get the professors data from the database
@@ -137,7 +139,7 @@ class dnd_label:
 
             nombre = self.label.cget("text") ##< Get the text of the label
             nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
-            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
+            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}'
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
                 # print(f'on release: {key_info}') ##< Print the key info of the label being moved
@@ -160,7 +162,7 @@ class dnd_label:
 
             nombre = self.label.cget("text") ##< Get the text of the label
             nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
-            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}'
+            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}'
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
                 # print(f'on release: {key_info}') ##< Print the key info of the label being moved

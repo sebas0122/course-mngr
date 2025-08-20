@@ -122,77 +122,72 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
     # Add classes (rooms) to schedule
     i = 0 ##< Initialize the index for xlimit
     for day in classes: ##< Iterate over the classes
-        j=0 ##< Initialize the index for ylimit
-        print(day)
         for cl in day:
-            
+
             temp = cl.split("_") ##< Split the string to get the class name and hours
             c_name = temp[0].split("\n")[0]
+            c_st_hour = int(temp[1])
+            c_duration = int(temp[2])
+            c_room = temp[3]
 
             if c_name not in class_colors_dict: ##< Check if the class is not already in the dictionary
                 class_colors_dict[c_name] = colors[colors_idx] ##< Add the class to the dictionary with the color
                 colors_idx += 1 ##< Increment the index for the colors
-            if c_name!='blank': ##< Check if the class is not blank (free space)
 
-                dnd_label(window=window,
-                          image=pixel,
-                          geometry_width=screen_width,
-                          geometry_height=screen_height,
-                          lab_disp=0,
-                          text=temp[0],
-                          bg_color=class_colors_dict[c_name],
-                          w=single_width-4,
-                          h=(int(temp[1])*single_height)-4,
-                          posx=xlimit[i],
-                          posy=ylimit[j],
-                          hours=int(temp[1]),
-                          type="class",
-                          info_label=information_label,
-                          cl_info=cl_information_label) ##< Create the drag&drop label for the class
+            dnd_label(window=window,
+                        image=pixel,
+                        geometry_width=screen_width,
+                        geometry_height=screen_height,
+                        lab_disp=0,
+                        text=temp[0],
+                        bg_color=class_colors_dict[c_name],
+                        w=single_width-4,
+                        h=(c_duration*single_height)-4,
+                        posx=xlimit[i],
+                        posy=ylimit[c_st_hour-6],
+                        hours=c_duration,
+                        type="class",
+                        room=c_room,
+                        info_label=information_label,
+                        cl_info=cl_information_label) ##< Create the drag&drop label for the class
 
-                labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
-            j+=int(temp[1]) ##< Increment the index for ylimit by the number of hours of the class
+            labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
 
     # Add labs to schedule
     i = 0 ##< Initialize the index for xlimit
     for day in labs: ##< Iterate over the labs
-        j=0 ##< Initialize the index for ylimit
-        for cl in day: 
+        for cl in day:
+
             temp = cl.split("_") ##< Split the string to get the lab name and hours
             c_name = temp[0].split("\n")[0]
-            if c_name!='blank': ##< Check if the lab is not blank (free space)
+            c_st_hour = int(temp[1])
+            c_duration = int(temp[2])
+            c_room = temp[3]
 
-                dnd_label(window=window,
-                          image=pixel,
-                          geometry_width=screen_width,
-                          geometry_height=screen_height,
-                          lab_disp=lab_displacement,
-                          text=temp[0],
-                          bg_color=class_colors_dict[c_name],
-                          w=single_width-4,
-                          h=(int(temp[1])*single_height)-4,
-                          posx=xlimit[i]+lab_displacement,
-                          posy=ylimit[j],
-                          hours=int(temp[1]),
-                          type="lab",
-                          info_label=information_label,
-                          cl_info=lb_information_label) ##< Create the drag&drop label for the lab
+            dnd_label(window=window,
+                        image=pixel,
+                        geometry_width=screen_width,
+                        geometry_height=screen_height,
+                        lab_disp=lab_displacement,
+                        text=temp[0],
+                        bg_color=class_colors_dict[c_name],
+                        w=single_width-4,
+                        h=(c_duration*single_height)-4,
+                        posx=xlimit[i]+lab_displacement,
+                        posy=ylimit[c_st_hour-6],
+                        hours=c_duration,
+                        type="lab",
+                        room=c_room,
+                        info_label=information_label,
+                        cl_info=lb_information_label) ##< Create the drag&drop label for the lab
 
-                labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
-            j+=int(temp[1]) ##< Increment the index for ylimit by the number of hours of the lab
+            labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
 
     return labels_ids ##< Return the list of labels ids
 
 c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
-
-# print(c)
-# print(l)
-# print(c_info)
-# print(l_info)
-
-
 lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
