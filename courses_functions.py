@@ -1,5 +1,9 @@
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+
+from supabase import create_client
 import pandas as pd
 
 ## getClassSchedule function
@@ -58,29 +62,34 @@ def getHoursLong(days_hours_string):
         return 0 ##< Return 0 if there is an error in processing the string
 
 ## connectSQL function
-# This function connects to a PostgreSQL database and retrieves data from the "materias" table.
-# It uses SQLAlchemy to create a connection and pandas to read the data into a DataFrame.
-# It takes the following parameter:
-# - table: the name of the table to retrieve data from
-def connectSQL(table):
-    uid = 'postgres'
-    pwd = 'UdeA_elecNtelDPT*'
-    host = 'localhost'
-    port = '5432'
-    db = 'programacion'
+# This function connects to the Supabase database.
+# Returns:
+# - supabase: the Supabase client instance
+def connectSQL():
+    try:
+        # Connect to the Supabase database
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        supabase = create_client(url, key)
 
-    # Create a connection string
-    connection_string = f'postgresql://{uid}:{pwd}@{host}:{port}/{db}'
-    # Create a database engine
-    engine = create_engine(connection_string)
+        return supabase
+    except Exception as e:
+        print(f"Error connecting to the database: {e}")
+        return None
 
-    # Execute a query to get the data from table "materias"
-    query = f"""
-    SELECT * FROM {table}
-    """
-    # Read the data into a pandas DataFrame
-    df = pd.read_sql(query, engine)
+## retrieveDBCourses function
+# This function retrieves course data from the Supabase database.
+# Takes:
+# - supabase: the Supabase client instance
+# Returns:
+# - df: a pandas DataFrame containing the course data
+def retrieveDBTable(supabase, table_name):
+    # Retrieve data from the specified table
+    data = supabase.table(table_name).select("*").execute()
+
+    df = pd.DataFrame(data.data)
     return df
+
 
 ## getClassesList function
 # This function takes a DataFrame and a semester level, and returns lists of classes and labs for each day of the week.
@@ -155,8 +164,8 @@ def getClassesList(df, semester):
 
     return classes_list, labs_list, class_info_dict, lab_info_dict
 
-def getProfessorsData():
-    dataframe = connectSQL("profesores")  # Ensure the connection is established
+def getProfessorsData(supabase):
+    dataframe = retrieveDBTable(supabase, "profesores")  # Ensure the connection is established
     """
     This function extracts professors' data from the DataFrame and returns it as a list of dictionaries.
     Each dictionary contains the professor's ID, name, and email.

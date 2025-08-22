@@ -1,9 +1,10 @@
 from tkinter import *
 from tkinter import ttk
 from dnd import *
-from courses_functions import connectSQL, getClassesList, getProfessorsData, update_schedule_in_db
+from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db
 
-dataframe = connectSQL("materias") ##< Connect to the database and get the data
+supabase_instance = connectSQL() ##< Connect to the database
+dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
 
 window = Tk() ##< Create a window
 
@@ -116,7 +117,7 @@ class_colors_dict = {} ##< Initialize the dictionary for the class colors
 # - labs: a list of labs for each day
 # Returns:
 # - labels_ids: a list of labels ids for the classes and labs added to the schedule
-def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
+def add_classes_labs(classes, labs, cl_information_label, lb_information_label, professors_information):
     global colors_idx, class_colors_dict, screen_width, screen_height, single_width, single_height, lab_displacement
     labels_ids = [] ##< Initialize the list of labels ids
     # Add classes (rooms) to schedule
@@ -149,7 +150,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
                         type="class",
                         room=c_room,
                         info_label=information_label,
-                        cl_info=cl_information_label) ##< Create the drag&drop label for the class
+                        cl_info=cl_information_label,
+                        proffs_info=professors_information) ##< Create the drag&drop label for the class
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -180,7 +182,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
                         type="lab",
                         room=c_room,
                         info_label=information_label,
-                        cl_info=lb_information_label) ##< Create the drag&drop label for the lab
+                        cl_info=lb_information_label,
+                        proffs_info=professors_information) ##< Create the drag&drop label for the lab
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -188,7 +191,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label):
     return labels_ids ##< Return the list of labels ids
 
 c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
-lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add classes and labs to the schedule
+p_info = getProfessorsData(supabase_instance)
+lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info) ##< Call the function to add classes and labs to the schedule
 
 # Add dropdown menu for level selection
 
@@ -196,11 +200,11 @@ lbs_ids = add_classes_labs(c, l, c_info, l_info) ##< Call the function to add cl
 # This function is called when the user selects a level from the dropdown menu. It updates the schedule with the classes and labs for the selected level.
 # It takes no parameters and returns nothing because it modifies the global variable lbs_ids.
 def change_level():
-    global lbs_ids, c_info, l_info, colors_idx, class_colors_dict
+    global lbs_ids, c_info, l_info, colors_idx, class_colors_dict, supabase_instance
     colors_idx = 0 ##< Reset the index for the colors
     class_colors_dict = {} ##< Reset the dictionary for the class colors
 
-    dataframe = connectSQL("materias") ##< Connect to the database and get the data
+    dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
 
     # Destroy all dnd_labels
     for widget in window.winfo_children():
@@ -230,7 +234,8 @@ def change_level():
         c, l, c_info, l_info = getClassesList(dataframe, 8)
     elif opt.get() == "Nivel 9":
         c, l, c_info, l_info = getClassesList(dataframe, 9)
-    lbs_ids = add_classes_labs(c, l, c_info, l_info)
+    p_info = getProfessorsData(supabase_instance)
+    lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info)
 
 # Dropdown options
 level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9"] 
