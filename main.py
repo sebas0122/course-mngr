@@ -374,9 +374,8 @@ add_button = Button(window, text="Añadir\nClase", command=open_add_class_window
 add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the position of the quit button
 
 def update_database():
-    print(c_info)
-    update_schedule_in_db(c_info, False) ##< Function to update the database with the current schedule
-    update_schedule_in_db(l_info, True) ##< Function to update the database with the current schedule
+    update_schedule_in_db(supabase_instance, c_info, False) ##< Function to update the database with the current schedule
+    update_schedule_in_db(supabase_instance, l_info, True) ##< Function to update the database with the current schedule
 # Button for updating database
 update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)

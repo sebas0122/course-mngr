@@ -215,45 +215,33 @@ def build_schedule_map(schedule_dict):
         for group in data['grupo']:
             class_id = (name, group)
             if class_id not in class_map:
-                class_map[class_id] = []
-            class_map[class_id].append(slot)
+                class_map[class_id] = {}
+                class_map[class_id]["new_schedule"] = []
+            class_map[class_id]["new_schedule"].append(slot)
+            class_map[class_id]["new_proffessors"] = data['profesor']
+            class_map[class_id]["new_room"] = data['aula']
     return class_map
 
-def update_schedule_in_db(schedule_dict, is_lab):
+def update_schedule_in_db(supabase, schedule_dict, is_lab):
     # 1. Parse and format
-    class_map = build_schedule_map(schedule_dict)    
+    class_map = build_schedule_map(schedule_dict)
 
-    uid = 'postgres'
-    pwd = 'UdeA_elecNtelDPT*'
-    host = 'localhost'
-    port = '5432'
-    db = 'programacion'
-
-    # Create a connection string
-    connection_string = f'postgresql://{uid}:{pwd}@{host}:{port}/{db}'
-    # Create a database engine
-    engine = create_engine(connection_string)
-    
-    # Update query
-    query = """
-        UPDATE materias
-        SET horario = %s
-        WHERE nombre = %s AND grupo = %s AND es_lab = %s;
-    """
-
-    # Perform the update
-    conn = engine.raw_connection()
-    try:
-        cursor = conn.cursor()
-        for (subject_name, group), slots in class_map.items():
-            formatted_schedule = '|'.join(sorted(slots))  # example: "L16-18|W8-10"
-            values = (formatted_schedule, subject_name, group, is_lab) 
-            cursor.execute(query, values)
-
-        conn.commit()
-    except Exception as e:
-        print("Error while updating schedules:", e)
-        conn.rollback()
-    finally:
-        cursor.close()
-        conn.close()
+    for (subject_name, group), slots in class_map.items():
+        formatted_schedule = '|'.join(sorted(slots["new_schedule"]))  # example: "L16-18|W8-10"
+        response = (
+            supabase
+            .table("materias")
+            .update({
+                "horario": formatted_schedule,
+                "profesor": slots["new_proffessors"],
+                "aula": slots["new_room"]
+                })
+            .eq("nombre", subject_name)
+            .eq("grupo", group)
+            .eq("es_lab", is_lab)
+            .execute()
+        )
+        if response.count == None:
+            print("Saved successfully!")
+        else:
+            print("Error saving data.")
