@@ -295,6 +295,7 @@ def open_add_class_window():
 
     # --- Save Handler ---
     def save_class():
+        global p_info
         name = name_entry.get()
         code = code_entry.get()
         professor = int(prof_entry.get())
@@ -306,33 +307,15 @@ def open_add_class_window():
         group = group_entry.get()
 
         # Update data dictionary
-        key = f"{name}_{start_hour}_{duration}_{day}"
+        key = f"{name}_{start_hour}_{duration}_{day}_{room}"
         info_dict = {
+            "id": 0,
             "nombre": name,
             "codigo": code,
             "profesor": [professor],
-            "grupo": group.split(", ") if ", " in group else [group],
+            "grupo": [int(g.strip()) for g in group.split(",")] if "," in group else [int(group)],
             "aula": room
         }
-
-        if opt.get() == "Nivel 1":
-            c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
-        elif opt.get() == "Nivel 2":
-            c, l, c_info, l_info = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
-        elif opt.get() == "Nivel 3":
-            c, l, c_info, l_info = getClassesList(dataframe, 3)
-        elif opt.get() == "Nivel 4":
-            c, l, c_info, l_info = getClassesList(dataframe, 4)
-        elif opt.get() == "Nivel 5":
-            c, l, c_info, l_info = getClassesList(dataframe, 5)
-        elif opt.get() == "Nivel 6":
-            c, l, c_info, l_info = getClassesList(dataframe, 6)
-        elif opt.get() == "Nivel 7":
-            c, l, c_info, l_info = getClassesList(dataframe, 7)
-        elif opt.get() == "Nivel 8":
-            c, l, c_info, l_info = getClassesList(dataframe, 8)
-        elif opt.get() == "Nivel 9":
-            c, l, c_info, l_info = getClassesList(dataframe, 9)
 
         if is_lab:
             l_info[key] = info_dict
@@ -354,7 +337,7 @@ def open_add_class_window():
                   geometry_width=screen_width,
                   geometry_height=screen_height,
                   lab_disp=lab_displacement if is_lab else 0,
-                  text=name,
+                  text=f"{name}\n{info_dict['grupo']}",
                   bg_color=bg_color,
                   w=single_width-4,
                   h=(duration * single_height) - 4,
@@ -362,8 +345,11 @@ def open_add_class_window():
                   posy=ylimit[start_hour - 6],
                   hours=duration,
                   type="lab" if is_lab else "class",
+                  room=room,
                   info_label=information_label,
-                  cl_info=l_info if is_lab else c_info) ##< Create the drag&drop label for the class or lab
+                  cl_info=l_info if is_lab else c_info,
+                  proffs_info=p_info
+                  ) ##< Create the drag&drop label for the class or lab
 
         add_win.destroy()
 
