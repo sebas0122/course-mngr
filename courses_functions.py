@@ -213,7 +213,7 @@ def build_schedule_map(schedule_dict):
         name, hour, duration, day = parse_schedule_key(key)
         slot = format_slot(day, hour, duration)
         for group in data['grupo']:
-            class_id = (name, group)
+            class_id = (data['id'], name, group)
             if class_id not in class_map:
                 class_map[class_id] = {}
                 class_map[class_id]["new_schedule"] = []
@@ -226,21 +226,36 @@ def update_schedule_in_db(supabase, schedule_dict, is_lab):
     # 1. Parse and format
     class_map = build_schedule_map(schedule_dict)
 
-    for (subject_name, group), slots in class_map.items():
+    for (id, subject_name, group), slots in class_map.items():
         formatted_schedule = '|'.join(sorted(slots["new_schedule"]))  # example: "L16-18|W8-10"
-        response = (
-            supabase
-            .table("materias")
-            .update({
-                "horario": formatted_schedule,
-                "profesor": slots["new_proffessors"],
-                "aula": slots["new_room"]
-                })
-            .eq("nombre", subject_name)
-            .eq("grupo", group)
-            .eq("es_lab", is_lab)
-            .execute()
-        )
+        if id != 0:
+            response = (
+                supabase
+                .table("materias")
+                .update({
+                    "horario": formatted_schedule,
+                    "profesor": slots["new_proffessors"],
+                    "aula": slots["new_room"]
+                    })
+                .eq("nombre", subject_name)
+                .eq("grupo", group)
+                .eq("es_lab", is_lab)
+                .execute()
+            )
+        else:
+            response = (
+                supabase
+                .table("materias")
+                .insert({
+                    "nombre": subject_name,
+                    "grupo": group,
+                    "es_lab": is_lab,
+                    "horario": formatted_schedule,
+                    "profesor": slots["new_proffessors"],
+                    "aula": slots["new_room"]
+                    })
+                .execute()
+            )
         if response.count == None:
             print("Saved successfully!")
         else:

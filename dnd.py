@@ -47,7 +47,7 @@ class dnd_label:
     # @param posy: The y position of the label.
     # @param hours: The number of hours the label will occupy in the grid.
     # @param type: The type of the label (class or lab).
-    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
@@ -69,6 +69,7 @@ class dnd_label:
         self.info_label = info_label ##< The label where the information of the course/lab will be displayed when the label is pressed
         self.cl_info = cl_info ##< The class information dictionary to be used in the info label
         self.proffs_info = proffs_info ##< The professors information dictionary to be used in the info label
+        self.cell_to_edit = cell_to_edit ##< The cell to edit in the edit class window
         self.label.place(x=posx, y=posy) ##< Set the position of the label
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
@@ -90,6 +91,7 @@ class dnd_label:
         key_info = f'{nombre}_{int(6+((self.label.winfo_y()-ylimit[0])/(ylimit[0]/2)))}_{self.hours}_{days_es[int((self.label.winfo_x()-xlimit[0])/(2*xlimit[0]))]}_{self.room}' ##< Create a key to access the class information
         print(f'on press: {key_info}') ##< Print the key info of the label being moved
         self.key_info = key_info ##< Create a key to access the class information
+        self.cell_to_edit['key'] = key_info ##< Set the key of the cell to edit in the edit class window
         professors = [self.proffs_info[f'{id}']['name'] for id in self.cl_info[key_info]['profesor']] ##< Create an empty list to store the professors of the course/lab
 
         ## Shows in GUI the information of the course/lab being moved

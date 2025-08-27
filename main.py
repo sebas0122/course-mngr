@@ -110,7 +110,7 @@ class_colors_dict = {} ##< Initialize the dictionary for the class colors
 
 # print(xlimit) ##< Print the xlimit list
 # print(ylimit)
-
+class_edit = {"key": None}
 ## add_classes_labs function
 # This function adds classes and labs to the schedule. It takes the following parameters:
 # - classes: a list of classes for each day
@@ -118,7 +118,7 @@ class_colors_dict = {} ##< Initialize the dictionary for the class colors
 # Returns:
 # - labels_ids: a list of labels ids for the classes and labs added to the schedule
 def add_classes_labs(classes, labs, cl_information_label, lb_information_label, professors_information):
-    global colors_idx, class_colors_dict, screen_width, screen_height, single_width, single_height, lab_displacement
+    global colors_idx, class_colors_dict, screen_width, screen_height, single_width, single_height, lab_displacement, class_edit
     labels_ids = [] ##< Initialize the list of labels ids
     # Add classes (rooms) to schedule
     i = 0 ##< Initialize the index for xlimit
@@ -151,7 +151,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         room=c_room,
                         info_label=information_label,
                         cl_info=cl_information_label,
-                        proffs_info=professors_information) ##< Create the drag&drop label for the class
+                        proffs_info=professors_information,
+                        cell_to_edit=class_edit) ##< Create the drag&drop label for the class
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -183,7 +184,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         room=c_room,
                         info_label=information_label,
                         cl_info=lb_information_label,
-                        proffs_info=professors_information) ##< Create the drag&drop label for the lab
+                        proffs_info=professors_information,
+                        cell_to_edit=class_edit) ##< Create the drag&drop label for the lab
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -348,8 +350,8 @@ def open_add_class_window():
                   room=room,
                   info_label=information_label,
                   cl_info=l_info if is_lab else c_info,
-                  proffs_info=p_info
-                  ) ##< Create the drag&drop label for the class or lab
+                  proffs_info=p_info,
+                  cell_to_edit=class_edit) ##< Create the drag&drop label for the class or lab
 
         add_win.destroy()
 
@@ -365,5 +367,63 @@ def update_database():
 # Button for updating database
 update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
+
+def open_edit_class_window():
+    print(class_edit)
+    add_win = Toplevel(window)
+    add_win.title("Add Class")
+    add_win.geometry("400x300")
+
+    # --- Form Fields ---
+    Label(add_win, text="Nombre:").grid(row=0, column=0, sticky="e")
+    name_entry = Entry(add_win)
+    name_entry.grid(row=0, column=1)
+    name_entry.insert(0, c_info[class_edit['key']]['nombre'] if class_edit['key'] in c_info else l_info[class_edit['key']]['nombre'])
+
+    Label(add_win, text="Código:").grid(row=1, column=0, sticky="e")
+    code_entry = Entry(add_win)
+    code_entry.grid(row=1, column=1)
+    code_entry.insert(0, c_info[class_edit['key']]['codigo'] if class_edit['key'] in c_info else l_info[class_edit['key']]['codigo'])
+
+    Label(add_win, text="ID del Profesor:").grid(row=2, column=0, sticky="e")
+    prof_entry = Entry(add_win)
+    prof_entry.grid(row=2, column=1)
+    prof_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['profesor'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['profesor'])))
+
+    Label(add_win, text="Aula:").grid(row=3, column=0, sticky="e")
+    room_entry = Entry(add_win)
+    room_entry.grid(row=3, column=1)
+    room_entry.insert(0, c_info[class_edit['key']]['aula'] if class_edit['key'] in c_info else l_info[class_edit['key']]['aula'])
+
+    Label(add_win, text="Día:").grid(row=4, column=0, sticky="e")
+    day_var = StringVar(value="Lunes")
+    OptionMenu(add_win, day_var, "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado").grid(row=4, column=1)
+    day_var.set(class_edit['key'].split("_")[3])
+
+    Label(add_win, text="Hora de Inicio:").grid(row=5, column=0, sticky="e")
+    start_entry = Entry(add_win)
+    start_entry.grid(row=5, column=1)
+    start_entry.insert(0, class_edit['key'].split("_")[1])
+
+    Label(add_win, text="Duración:").grid(row=6, column=0, sticky="e")
+    duration_entry = Entry(add_win)
+    duration_entry.grid(row=6, column=1)
+    duration_entry.insert(0, class_edit['key'].split("_")[2])
+
+    Label(add_win, text="Tipo:").grid(row=7, column=0, sticky="e")
+    type_var = StringVar(value="Teoría")
+    OptionMenu(add_win, type_var, "Teoría", "Laboratorio").grid(row=7, column=1)
+    type_var.set("Teoría" if class_edit['key'] in c_info else "Laboratorio")
+
+
+    Label(add_win, text="Grupo(s)").grid(row=8, column=0, sticky="e")
+    group_entry = Entry(add_win)
+    group_entry.grid(row=8, column=1)
+    group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))
+
+    # --- Save Handler ---
+    # def save_class():
+edit_button = Button(window, text="Editar\nClase", command=open_edit_class_window, background="lightblue")
+edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
 
 window.mainloop() ##< Start the main loop of the window
