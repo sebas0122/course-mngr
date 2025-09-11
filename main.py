@@ -110,7 +110,9 @@ class_colors_dict = {} ##< Initialize the dictionary for the class colors
 
 # print(xlimit) ##< Print the xlimit list
 # print(ylimit)
-class_edit = {"key": None}
+class_edit = {"key": None} 
+classes_edited_keys = []
+labs_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 ## add_classes_labs function
 # This function adds classes and labs to the schedule. It takes the following parameters:
 # - classes: a list of classes for each day
@@ -152,7 +154,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         info_label=information_label,
                         cl_info=cl_information_label,
                         proffs_info=professors_information,
-                        cell_to_edit=class_edit) ##< Create the drag&drop label for the class
+                        cell_to_edit=class_edit,
+                        c_edited=classes_edited_keys) ##< Create the drag&drop label for the class
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -185,7 +188,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         info_label=information_label,
                         cl_info=lb_information_label,
                         proffs_info=professors_information,
-                        cell_to_edit=class_edit) ##< Create the drag&drop label for the lab
+                        cell_to_edit=class_edit,
+                        c_edited=labs_edited_keys) ##< Create the drag&drop label for the lab
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
         i+=1 ##< Increment the index for xlimit by 1
@@ -322,9 +326,11 @@ def open_add_class_window():
         if is_lab:
             l_info[key] = info_dict
             print("Labs info:", l_info)
+            labs_edited_keys.append(key)
         else:
             c_info[key] = info_dict
             print("Classes info:", c_info)
+            classes_edited_keys.append(key)
 
         # Add to UI immediately
         bg_color = class_colors_dict.get(name)
@@ -351,7 +357,8 @@ def open_add_class_window():
                   info_label=information_label,
                   cl_info=l_info if is_lab else c_info,
                   proffs_info=p_info,
-                  cell_to_edit=class_edit) ##< Create the drag&drop label for the class or lab
+                  cell_to_edit=class_edit,
+                  c_edited=labs_edited_keys if is_lab else classes_edited_keys) ##< Create the drag&drop label for the class or lab
 
         add_win.destroy()
 
@@ -362,8 +369,8 @@ add_button = Button(window, text="Añadir\nClase", command=open_add_class_window
 add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the position of the quit button
 
 def update_database():
-    update_schedule_in_db(supabase_instance, c_info, False) ##< Function to update the database with the current schedule
-    update_schedule_in_db(supabase_instance, l_info, True) ##< Function to update the database with the current schedule
+    update_schedule_in_db(supabase_instance, c_info, classes_edited_keys, False) ##< Function to update the database with the current schedule
+    update_schedule_in_db(supabase_instance, l_info, labs_edited_keys, True) ##< Function to update the database with the current schedule
 # Button for updating database
 update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
@@ -422,7 +429,64 @@ def open_edit_class_window():
     group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))
 
     # --- Save Handler ---
-    # def save_class():
+    def save_class():
+        # print("Saving class...")
+        global p_info, classes_edited_keys, labs_edited_keys
+        name = name_entry.get()
+        code = code_entry.get()
+        professor = [int(p.strip()) for p in prof_entry.get().split(",")] if "," in prof_entry.get() else [int(prof_entry.get())]
+        room = room_entry.get()
+        day = day_var.get()
+        start_hour = int(start_entry.get())
+        duration = int(duration_entry.get())
+        is_lab = (type_var.get() == "Laboratorio")
+        group = [int(g.strip()) for g in group_entry.get().split(",")] if "," in group_entry.get() else [int(group_entry.get())]
+
+        # Update data dictionary
+        old_key = class_edit['key']
+        new_key = f"{name}_{start_hour}_{duration}_{day}_{room}"
+        info_dict = {
+            "id": l_info[old_key]['id'] if old_key in l_info else c_info[old_key]['id'],
+            "nombre": name,
+            "codigo": code,
+            "profesor": professor,
+            "grupo": group,
+            "aula": room
+        }
+
+        if is_lab:
+            if old_key in l_info:
+                del l_info[old_key]
+        else:
+            if old_key in c_info:
+                del c_info[old_key]
+
+        # Add the new entry
+        if is_lab:
+            l_info[new_key] = info_dict
+            labs_edited_keys.append(new_key)
+        else:
+            c_info[new_key] = info_dict
+            classes_edited_keys.append(new_key)
+
+        # Close the edit window
+        add_win.destroy()
+
+    # --- Cancel Handler ---
+    def cancel_edit():
+        add_win.destroy()
+
+    # --- Bind Save and Cancel ---
+    save_button = Button(add_win, text="Guardar", command=save_class)
+    save_button.grid(row=9, column=0, columnspan=2)
+
+    cancel_button = Button(add_win, text="Cancelar", command=cancel_edit)
+    cancel_button.grid(row=10, column=0, columnspan=2)
+
+    add_win.transient(window)
+    add_win.grab_set()
+    window.wait_window(add_win)
+
 edit_button = Button(window, text="Editar\nClase", command=open_edit_class_window, background="lightblue")
 edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
 

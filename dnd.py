@@ -47,7 +47,7 @@ class dnd_label:
     # @param posy: The y position of the label.
     # @param hours: The number of hours the label will occupy in the grid.
     # @param type: The type of the label (class or lab).
-    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit, c_edited):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
@@ -70,6 +70,7 @@ class dnd_label:
         self.cl_info = cl_info ##< The class information dictionary to be used in the info label
         self.proffs_info = proffs_info ##< The professors information dictionary to be used in the info label
         self.cell_to_edit = cell_to_edit ##< The cell to edit in the edit class window
+        self.c_edited = c_edited ##< The edited classes keys
         self.label.place(x=posx, y=posy) ##< Set the position of the label
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
@@ -147,6 +148,8 @@ class dnd_label:
                 self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
                 # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
                 del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
+                self.c_edited.append(key_info) ##< Add the edited class key to the list
+                self.c_edited.remove(self.key_info) ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
 
             if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
@@ -170,6 +173,8 @@ class dnd_label:
                 self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
                 # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
                 del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
+                self.c_edited.append(key_info) ##< Add the edited class key to the list
+                self.c_edited.remove(self.key_info) ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
 
             if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid

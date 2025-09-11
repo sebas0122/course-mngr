@@ -222,9 +222,10 @@ def build_schedule_map(schedule_dict):
             class_map[class_id]["new_room"] = data['aula']
     return class_map
 
-def update_schedule_in_db(supabase, schedule_dict, is_lab):
+def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
+    only_edited_dict = {k: v for k, v in schedule_dict.items() if k in c_edited}
     # 1. Parse and format
-    class_map = build_schedule_map(schedule_dict)
+    class_map = build_schedule_map(only_edited_dict)
 
     for (id, subject_name, group), slots in class_map.items():
         formatted_schedule = '|'.join(sorted(slots["new_schedule"]))  # example: "L16-18|W8-10"
@@ -248,8 +249,19 @@ def update_schedule_in_db(supabase, schedule_dict, is_lab):
                 .table("materias")
                 .insert({
                     "nombre": subject_name,
+                    "facultad": 25,
+                    "dependencia": 98,
+                    "ide": 'IIE',
+                    "materia": 000,
                     "grupo": group,
+                    "tipo": 'T-P',
                     "es_lab": is_lab,
+                    "nivel": 1,
+                    "horas_teoricas": 4,
+                    "horas_practicas": 3,
+                    "horas_tp": 0,
+                    "electiva": False,
+                    "es_dept": True,
                     "horario": formatted_schedule,
                     "profesor": slots["new_proffessors"],
                     "aula": slots["new_room"]
