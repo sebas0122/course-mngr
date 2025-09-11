@@ -121,7 +121,7 @@ def getClassesList(df, semester):
             key_info = f'{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}_{aula}'  # Unique key for class or lab info
             
             info = {
-                'id': id,
+                'id': [id],
                 'nombre': nombre,
                 'codigo': codigo,
                 'profesor': profesor,
@@ -137,7 +137,11 @@ def getClassesList(df, semester):
                     old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
 
                     gr.append(grupo)  # Append the new group to the existing one
+                    ids = class_info_dict[key_info]['id']
+                    ids.append(id)  # Append the new id to the existing one
                     class_info_dict[key_info]['grupo'] = gr
+                    class_info_dict[key_info]['id'] = ids
+
 
 
                     idx = classes_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
@@ -153,7 +157,10 @@ def getClassesList(df, semester):
                     old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
 
                     gr.append(grupo)
+                    ids = lab_info_dict[key_info]['id']
+                    ids.append(id)  # Append the new id to the existing one
                     lab_info_dict[key_info]['grupo'] = gr
+                    lab_info_dict[key_info]['id'] = ids
 
                     idx = labs_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
                     new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
@@ -272,3 +279,18 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
             print("Saved successfully!")
         else:
             print("Error saving data.")
+
+def delete_class_in_db(supabase, deleted_keys):
+    for id_to_delete in deleted_keys:
+        print(f"Deleting {id_to_delete}...")
+        response = (
+            supabase
+            .table("materias")
+            .delete()
+            .eq("id", id_to_delete)
+            .execute()
+        )
+        if response.count == None:
+            print(f"Deleted {id_to_delete} successfully!")
+        else:
+            print(f"Error deleting {id_to_delete}.")

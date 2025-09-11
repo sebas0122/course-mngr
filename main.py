@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from dnd import *
-from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db
+from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db
 
 supabase_instance = connectSQL() ##< Connect to the database
 dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
@@ -11,10 +11,8 @@ window = Tk() ##< Create a window
 window.attributes('-fullscreen', True) ##< Set the window to fullscreen
 
 screen_width = window.winfo_screenwidth() ##< Get the screen width
-print("Screen width:", screen_width) ##< Print the screen width
 
 screen_height = window.winfo_screenheight() ##< Get the screen height
-print("Screen height:", screen_height) ##< Print the screen height
 
 pixel = PhotoImage(width=1, height=1)
 
@@ -108,11 +106,10 @@ colors = ["#B89E97", "#4ECDC4", "#BCBD8B", "#FF9770", "#6EA4BF", "#385F71", "#D6
 colors_idx = 0 ##< Initialize the index for the colors
 class_colors_dict = {} ##< Initialize the dictionary for the class colors
 
-# print(xlimit) ##< Print the xlimit list
-# print(ylimit)
 class_edit = {"key": None} 
-classes_edited_keys = []
+classes_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 labs_edited_keys = [] ##< Initialize the list of classes and labs edited keys
+deleted_keys = [] ##< Initialize the list of classes and labs deleted keys
 ## add_classes_labs function
 # This function adds classes and labs to the schedule. It takes the following parameters:
 # - classes: a list of classes for each day
@@ -325,11 +322,9 @@ def open_add_class_window():
 
         if is_lab:
             l_info[key] = info_dict
-            print("Labs info:", l_info)
             labs_edited_keys.append(key)
         else:
             c_info[key] = info_dict
-            print("Classes info:", c_info)
             classes_edited_keys.append(key)
 
         # Add to UI immediately
@@ -371,6 +366,10 @@ add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the pos
 def update_database():
     update_schedule_in_db(supabase_instance, c_info, classes_edited_keys, False) ##< Function to update the database with the current schedule
     update_schedule_in_db(supabase_instance, l_info, labs_edited_keys, True) ##< Function to update the database with the current schedule
+    delete_class_in_db(supabase_instance, deleted_keys) ##< Function to delete the selected classes and labs from the database
+    classes_edited_keys.clear() ##< Clear the list of classes edited keys
+    labs_edited_keys.clear() ##< Clear the list of labs edited keys
+    deleted_keys.clear() ##< Clear the list of deleted keys
 # Button for updating database
 update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
@@ -489,5 +488,46 @@ def open_edit_class_window():
 
 edit_button = Button(window, text="Editar\nClase", command=open_edit_class_window, background="lightblue")
 edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
+
+def delete_selected_class():
+    global class_edit, deleted_keys
+    key = class_edit['key']
+    group = c_info[key]['grupo'] if key in c_info else l_info[key]['grupo'] if key in l_info else None
+    ids_to_delete = c_info[key]['id'] if key in c_info else l_info[key]['id'] if key in l_info else None
+    cell_name = f"{c_info[key]['nombre']}\n{group}" if key in c_info else f"{l_info[key]['nombre']}\n{group}"
+    print(cell_name)
+    print("----------------------------------------")
+    if key:
+        # for widget in window.winfo_children():
+        # if len(lbs_ids) == 0:
+        #     break
+        # if isinstance(widget, Label):
+        #     if widget == lbs_ids[0]:
+        #         lbs_ids.remove(widget) ##< Remove the label id from the list
+        #         widget.destroy()
+        # Remove from UI
+        for widget in window.winfo_children():
+            if widget in lbs_ids:
+                print(f'Widget text: {widget.cget("text")}')
+                if isinstance(widget, Label) and widget.cget("text") == cell_name:
+                    widget.destroy()
+                    break
+
+        # Mark as deleted
+        for id in ids_to_delete:
+            deleted_keys.append(id)
+        print(deleted_keys)
+
+        # Remove from data dictionaries
+        if key in c_info:
+            del c_info[key]
+        if key in l_info:
+            del l_info[key]
+
+        # Clear selection
+        class_edit['key'] = None
+
+delete_button = Button(window, text="Eliminar\nClase", command=delete_selected_class, background="red")
+delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 
 window.mainloop() ##< Start the main loop of the window
