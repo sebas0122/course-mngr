@@ -123,6 +123,9 @@ def getClassesList(df, semester):
             info = {
                 'id': [id],
                 'nombre': nombre,
+                'facultad': row['facultad'],
+                'dependencia': row['dependencia'],
+                'materia': row['materia'],
                 'codigo': codigo,
                 'profesor': profesor,
                 'grupo': [grupo],
@@ -220,17 +223,23 @@ def build_schedule_map(schedule_dict):
         name, hour, duration, day = parse_schedule_key(key)
         slot = format_slot(day, hour, duration)
         for group in data['grupo']:
-            class_id = (data['id'], name, group)
+            class_id = (data['id'][data['grupo'].index(group)], name, group)
             if class_id not in class_map:
                 class_map[class_id] = {}
                 class_map[class_id]["new_schedule"] = []
             class_map[class_id]["new_schedule"].append(slot)
-            class_map[class_id]["new_proffessors"] = data['profesor']
+            class_map[class_id]["new_professors"] = data['profesor']
             class_map[class_id]["new_room"] = data['aula']
+            class_map[class_id]["new_fac"] = data['facultad']
+            class_map[class_id]["new_dep"] = data['dependencia']
+            class_map[class_id]["new_mat"] = data['materia']
+
     return class_map
 
 def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
+    print("Schedule list to update:", c_edited)
     only_edited_dict = {k: v for k, v in schedule_dict.items() if k in c_edited}
+    print("Only edited schedule dict:", only_edited_dict)
     # 1. Parse and format
     class_map = build_schedule_map(only_edited_dict)
 
@@ -242,7 +251,7 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                 .table("materias")
                 .update({
                     "horario": formatted_schedule,
-                    "profesor": slots["new_proffessors"],
+                    "profesor": slots["new_professors"],
                     "aula": slots["new_room"]
                     })
                 .eq("nombre", subject_name)
@@ -256,10 +265,10 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                 .table("materias")
                 .insert({
                     "nombre": subject_name,
-                    "facultad": 25,
-                    "dependencia": 98,
+                    "facultad": slots['new_fac'],
+                    "dependencia": slots['new_dep'],
                     "ide": 'IIE',
-                    "materia": 000,
+                    "materia": slots['new_mat'],
                     "grupo": group,
                     "tipo": 'T-P',
                     "es_lab": is_lab,
@@ -270,7 +279,7 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                     "electiva": False,
                     "es_dept": True,
                     "horario": formatted_schedule,
-                    "profesor": slots["new_proffessors"],
+                    "profesor": slots["new_professors"],
                     "aula": slots["new_room"]
                     })
                 .execute()

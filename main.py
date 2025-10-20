@@ -257,16 +257,24 @@ dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the posi
 def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
-    add_win.geometry("400x300")
+    add_win.geometry("600x400")
 
     # --- Form Fields ---
     Label(add_win, text="Nombre:").grid(row=0, column=0, sticky="e")
     name_entry = Entry(add_win)
     name_entry.grid(row=0, column=1)
 
-    Label(add_win, text="Código:").grid(row=1, column=0, sticky="e")
-    code_entry = Entry(add_win)
-    code_entry.grid(row=1, column=1)
+    Label(add_win, text="Facultad:").grid(row=1, column=0, sticky="e")
+    fac_entry = Entry(add_win, width=10)
+    fac_entry.grid(row=1, column=1)
+    
+    Label(add_win, text="Dependencia:").grid(row=1, column=2, sticky="e")
+    dep_entry = Entry(add_win, width=10)
+    dep_entry.grid(row=1, column=3)
+
+    Label(add_win, text="Materia:").grid(row=1, column=4, sticky="e")
+    mat_entry = Entry(add_win, width=10)
+    mat_entry.grid(row=1, column=5)
 
     Label(add_win, text="ID del Profesor:").grid(row=2, column=0, sticky="e")
     prof_entry = Entry(add_win)
@@ -300,7 +308,9 @@ def open_add_class_window():
     def save_class():
         global p_info
         name = name_entry.get()
-        code = code_entry.get()
+        fac = fac_entry.get()
+        dep = dep_entry.get()
+        mat = mat_entry.get()
         professor = int(prof_entry.get())
         room = room_entry.get()
         day = day_var.get()
@@ -314,7 +324,10 @@ def open_add_class_window():
         info_dict = {
             "id": 0,
             "nombre": name,
-            "codigo": code,
+            "facultad": fac,
+            "dependencia": dep,
+            "materia": mat,
+            "codigo": f"{fac}{dep}{mat}",
             "profesor": [professor],
             "grupo": [int(g.strip()) for g in group.split(",")] if "," in group else [int(group)],
             "aula": room
@@ -386,10 +399,20 @@ def open_edit_class_window():
     name_entry.grid(row=0, column=1)
     name_entry.insert(0, c_info[class_edit['key']]['nombre'] if class_edit['key'] in c_info else l_info[class_edit['key']]['nombre'])
 
-    Label(add_win, text="Código:").grid(row=1, column=0, sticky="e")
-    code_entry = Entry(add_win)
-    code_entry.grid(row=1, column=1)
-    code_entry.insert(0, c_info[class_edit['key']]['codigo'] if class_edit['key'] in c_info else l_info[class_edit['key']]['codigo'])
+    Label(add_win, text="Facultad:").grid(row=1, column=0, sticky="e")
+    fac_entry = Entry(add_win, width=10)
+    fac_entry.grid(row=1, column=1)
+    fac_entry.insert(0, c_info[class_edit['key']]['facultad'] if class_edit['key'] in c_info else l_info[class_edit['key']]['facultad'])
+
+    Label(add_win, text="Dependencia:").grid(row=1, column=2, sticky="e")
+    dep_entry = Entry(add_win, width=10)
+    dep_entry.grid(row=1, column=3)
+    dep_entry.insert(0, c_info[class_edit['key']]['dependencia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['dependencia'])
+
+    Label(add_win, text="Materia:").grid(row=1, column=4, sticky="e")
+    mat_entry = Entry(add_win, width=10)
+    mat_entry.grid(row=1, column=5)
+    mat_entry.insert(0, c_info[class_edit['key']]['materia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['materia'])
 
     Label(add_win, text="ID del Profesor:").grid(row=2, column=0, sticky="e")
     prof_entry = Entry(add_win)
@@ -432,7 +455,9 @@ def open_edit_class_window():
         # print("Saving class...")
         global p_info, classes_edited_keys, labs_edited_keys
         name = name_entry.get()
-        code = code_entry.get()
+        fac = fac_entry.get()
+        dep = dep_entry.get()
+        mat = mat_entry.get()
         professor = [int(p.strip()) for p in prof_entry.get().split(",")] if "," in prof_entry.get() else [int(prof_entry.get())]
         room = room_entry.get()
         day = day_var.get()
@@ -447,7 +472,10 @@ def open_edit_class_window():
         info_dict = {
             "id": l_info[old_key]['id'] if old_key in l_info else c_info[old_key]['id'],
             "nombre": name,
-            "codigo": code,
+            "facultad": fac,
+            "dependencia": dep,
+            "materia": mat,
+            "codigo": f"{fac}{dep}{mat}",
             "profesor": professor,
             "grupo": group,
             "aula": room
