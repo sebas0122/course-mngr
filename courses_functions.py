@@ -233,6 +233,7 @@ def build_schedule_map(schedule_dict):
             class_map[class_id]["new_fac"] = data['facultad']
             class_map[class_id]["new_dep"] = data['dependencia']
             class_map[class_id]["new_mat"] = data['materia']
+            class_map[class_id]["new_level"] = data['nivel'] if 'nivel' in data else 0
 
     return class_map
 
@@ -272,7 +273,7 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                     "grupo": group,
                     "tipo": 'T-P',
                     "es_lab": is_lab,
-                    "nivel": 1,
+                    "nivel": slots['new_level'],
                     "horas_teoricas": 4,
                     "horas_practicas": 3,
                     "horas_tp": 0,

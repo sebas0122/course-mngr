@@ -1,10 +1,15 @@
 from tkinter import *
 from tkinter import ttk
+import customtkinter as ctk
+
 from dnd import *
 from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db
 
 supabase_instance = connectSQL() ##< Connect to the database
 dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
+
+ctk.set_appearance_mode("Light") ##< Set the appearance mode to light
+ctk.set_default_color_theme("blue")
 
 window = Tk() ##< Create a window
 
@@ -257,52 +262,71 @@ dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the posi
 def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
-    add_win.geometry("600x400")
+    add_win.geometry("400x450")
+    
+    # scr_frame = ctk.CTkScrollableFrame(add_win)
+    # scr_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
     # --- Form Fields ---
-    Label(add_win, text="Nombre:").grid(row=0, column=0, sticky="e")
-    name_entry = Entry(add_win)
-    name_entry.grid(row=0, column=1)
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
+    name_entry.pack(pady=5)
 
-    Label(add_win, text="Facultad:").grid(row=1, column=0, sticky="e")
-    fac_entry = Entry(add_win, width=10)
-    fac_entry.grid(row=1, column=1)
-    
-    Label(add_win, text="Dependencia:").grid(row=1, column=2, sticky="e")
-    dep_entry = Entry(add_win, width=10)
-    dep_entry.grid(row=1, column=3)
+    # --- Row for code entries ---
+    row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_code_frame.pack(pady=5)
 
-    Label(add_win, text="Materia:").grid(row=1, column=4, sticky="e")
-    mat_entry = Entry(add_win, width=10)
-    mat_entry.grid(row=1, column=5)
+    fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70)
+    fac_entry.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="ID del Profesor:").grid(row=2, column=0, sticky="e")
-    prof_entry = Entry(add_win)
-    prof_entry.grid(row=2, column=1)
+    dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90)
+    dep_entry.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="Aula:").grid(row=3, column=0, sticky="e")
-    room_entry = Entry(add_win)
-    room_entry.grid(row=3, column=1)
+    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
+    mat_entry.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="Día:").grid(row=4, column=0, sticky="e")
-    day_var = StringVar(value="Lunes")
-    OptionMenu(add_win, day_var, "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado").grid(row=4, column=1)
+    # --- Row for code labels ---
+    row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_code_labels_frame.pack(pady=2)
 
-    Label(add_win, text="Hora de Inicio:").grid(row=5, column=0, sticky="e")
-    start_entry = Entry(add_win)
-    start_entry.grid(row=5, column=1)
+    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>")
+    fac_label.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="Duración:").grid(row=6, column=0, sticky="e")
-    duration_entry = Entry(add_win)
-    duration_entry.grid(row=6, column=1)
+    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
+    dep_label.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="Tipo:").grid(row=7, column=0, sticky="e")
-    type_var = StringVar(value="Teoría")
-    OptionMenu(add_win, type_var, "Teoría", "Laboratorio").grid(row=7, column=1)
+    mat_label = ctk.CTkLabel(row_code_labels_frame, text="<Materia>")
+    mat_label.pack(padx=5, side=LEFT)
 
-    Label(add_win, text="Grupo(s)").grid(row=8, column=0, sticky="e")
-    group_entry = Entry(add_win)
-    group_entry.grid(row=8, column=1)
+    # --- Row for professor ID and name ---
+    row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_prof_frame.pack(pady=5)
+
+    prof_entry = ctk.CTkEntry(row_prof_frame, placeholder_text="ID del Profesor")
+    prof_entry.pack(padx=2, side=LEFT)
+    prof_label = ctk.CTkLabel(row_prof_frame, text="<Nombre del profesor>")
+    prof_label.pack(padx=2, side=LEFT)
+
+    room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula")
+    room_entry.pack(pady=5)
+
+    day_var = ctk.StringVar(value="Día")
+    ctk.CTkOptionMenu(add_win,
+                      values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+                      variable=day_var).pack(pady=5)
+
+    start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio")
+    start_entry.pack(pady=5)
+
+    duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración")
+    duration_entry.pack(pady=5)
+
+    type_var = ctk.StringVar(value="Tipo")
+    ctk.CTkOptionMenu(add_win,
+                      values=["Teoría", "Laboratorio"],
+                      variable=type_var).pack(pady=5)
+
+    group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)")
+    group_entry.pack(pady=5)
 
     # --- Save Handler ---
     def save_class():
@@ -322,7 +346,8 @@ def open_add_class_window():
         # Update data dictionary
         key = f"{name}_{start_hour}_{duration}_{day}_{room}"
         info_dict = {
-            "id": 0,
+            "id": [0],
+            "nivel": int(opt.get().split(" ")[1]),
             "nombre": name,
             "facultad": fac,
             "dependencia": dep,
@@ -370,7 +395,7 @@ def open_add_class_window():
 
         add_win.destroy()
 
-    Button(add_win, text="Guardar", command=save_class, bg="lightgreen").grid(row=9, column=0, columnspan=2)
+    ctk.CTkButton(add_win, text="Guardar", command=save_class).pack(pady=20)
 
 # Button for adding a new class
 add_button = Button(window, text="Añadir\nClase", command=open_add_class_window, background="lightyellow")
