@@ -25,7 +25,7 @@ quit_button = Button(window, text="Quit", background="red", command=window.quit)
 quit_button.place(x=int(screen_width*(14/15)), y=0) ##< Set the position of the quit button
 
 single_width = int(screen_width / 14) ##< Set the width of a single cell
-single_height = int(screen_height / 25) ##< Set the height of a single cell
+single_height = int(screen_height / 22) ##< Set the height of a single cell
 
 lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
@@ -46,9 +46,8 @@ for hour in range(6, 22):
 
 information_label = Label(window,
                           text="Course Information\n\nClick on a class or lab to see more information!",
-                          font=("Arial", 16),
+                          font=("Arial", 12),
                           justify="left",
-                          bg="#FFF1F1",
                           image=pixel,
                           height=screen_height - (ylimit[-1]+2*single_height),
                           width=screen_width,
@@ -107,7 +106,7 @@ for xl in xlimit:
 separator = ttk.Separator(window, orient='vertical')
 separator.place(x=xlimit[-1]+single_width+lab_displacement, y=single_height, height=(2+(21-6))*single_height) ##< Set the position of the separator line
 
-colors = ["#B89E97", "#4ECDC4", "#BCBD8B", "#FF9770", "#6EA4BF", "#385F71", "#D6D84F"] ##< Set the colors for the classes and labs
+colors = ["#F2DFD7", "#DBA159", "#6A8D92", "#80B192", "#A1E887", "#385F71", "#FFC482"] ##< Set the colors for the classes and labs
 colors_idx = 0 ##< Initialize the index for the colors
 class_colors_dict = {} ##< Initialize the dictionary for the class colors
 
@@ -263,9 +262,6 @@ def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
     add_win.geometry("400x450")
-    
-    # scr_frame = ctk.CTkScrollableFrame(add_win)
-    # scr_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
     # --- Form Fields ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
@@ -330,7 +326,7 @@ def open_add_class_window():
 
     # --- Save Handler ---
     def save_class():
-        global p_info
+        global p_info, lbs_ids
         name = name_entry.get()
         fac = fac_entry.get()
         dep = dep_entry.get()
@@ -392,6 +388,8 @@ def open_add_class_window():
                   proffs_info=p_info,
                   cell_to_edit=class_edit,
                   c_edited=labs_edited_keys if is_lab else classes_edited_keys) ##< Create the drag&drop label for the class or lab
+        
+        lbs_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
 
         add_win.destroy()
 
@@ -408,72 +406,90 @@ def update_database():
     classes_edited_keys.clear() ##< Clear the list of classes edited keys
     labs_edited_keys.clear() ##< Clear the list of labs edited keys
     deleted_keys.clear() ##< Clear the list of deleted keys
+    change_level() ##< Refresh the schedule display
 # Button for updating database
 update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 
 def open_edit_class_window():
-    print(class_edit)
     add_win = Toplevel(window)
     add_win.title("Add Class")
-    add_win.geometry("400x300")
+    add_win.geometry("400x500")
 
     # --- Form Fields ---
-    Label(add_win, text="Nombre:").grid(row=0, column=0, sticky="e")
-    name_entry = Entry(add_win)
-    name_entry.grid(row=0, column=1)
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
+    name_entry.pack(pady=5)
     name_entry.insert(0, c_info[class_edit['key']]['nombre'] if class_edit['key'] in c_info else l_info[class_edit['key']]['nombre'])
 
-    Label(add_win, text="Facultad:").grid(row=1, column=0, sticky="e")
-    fac_entry = Entry(add_win, width=10)
-    fac_entry.grid(row=1, column=1)
+     # --- Row for code entries ---
+    row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_code_frame.pack(pady=5)
+
+    fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70)
+    fac_entry.pack(padx=5, side=LEFT)
     fac_entry.insert(0, c_info[class_edit['key']]['facultad'] if class_edit['key'] in c_info else l_info[class_edit['key']]['facultad'])
+    fac_entry.configure(state="disabled")
 
-    Label(add_win, text="Dependencia:").grid(row=1, column=2, sticky="e")
-    dep_entry = Entry(add_win, width=10)
-    dep_entry.grid(row=1, column=3)
+    dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90)
+    dep_entry.pack(padx=5, side=LEFT)
     dep_entry.insert(0, c_info[class_edit['key']]['dependencia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['dependencia'])
+    dep_entry.configure(state="disabled")
 
-    Label(add_win, text="Materia:").grid(row=1, column=4, sticky="e")
-    mat_entry = Entry(add_win, width=10)
-    mat_entry.grid(row=1, column=5)
+    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
+    mat_entry.pack(padx=5, side=LEFT)
     mat_entry.insert(0, c_info[class_edit['key']]['materia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['materia'])
+    mat_entry.configure(state="disabled")
 
-    Label(add_win, text="ID del Profesor:").grid(row=2, column=0, sticky="e")
-    prof_entry = Entry(add_win)
-    prof_entry.grid(row=2, column=1)
+    # --- Row for code labels ---
+    row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_code_labels_frame.pack(pady=2)
+
+    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>")
+    fac_label.pack(padx=5, side=LEFT)
+
+    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
+    dep_label.pack(padx=5, side=LEFT)
+
+    mat_label = ctk.CTkLabel(row_code_labels_frame, text="<Materia>")
+    mat_label.pack(padx=5, side=LEFT)
+
+    # --- Row for professor ID and name ---
+    row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_prof_frame.pack(pady=5)
+
+    prof_entry = ctk.CTkEntry(row_prof_frame, placeholder_text="ID del Profesor")
+    prof_entry.pack(padx=2, side=LEFT)
     prof_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['profesor'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['profesor'])))
 
-    Label(add_win, text="Aula:").grid(row=3, column=0, sticky="e")
-    room_entry = Entry(add_win)
-    room_entry.grid(row=3, column=1)
+    prof_label = ctk.CTkLabel(row_prof_frame, text="<Nombre del profesor>")
+    prof_label.pack(padx=2, side=LEFT)
+
+    room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula")
+    room_entry.pack(pady=5)
     room_entry.insert(0, c_info[class_edit['key']]['aula'] if class_edit['key'] in c_info else l_info[class_edit['key']]['aula'])
 
-    Label(add_win, text="Día:").grid(row=4, column=0, sticky="e")
-    day_var = StringVar(value="Lunes")
-    OptionMenu(add_win, day_var, "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado").grid(row=4, column=1)
-    day_var.set(class_edit['key'].split("_")[3])
+    day_var = ctk.StringVar(value=class_edit['key'].split("_")[3])
+    ctk.CTkOptionMenu(add_win,
+                      values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+                      variable=day_var, state="disabled").pack(pady=5)
 
-    Label(add_win, text="Hora de Inicio:").grid(row=5, column=0, sticky="e")
-    start_entry = Entry(add_win)
-    start_entry.grid(row=5, column=1)
+    start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio")
+    start_entry.pack(pady=5)
     start_entry.insert(0, class_edit['key'].split("_")[1])
+    start_entry.configure(state="disabled")
 
-    Label(add_win, text="Duración:").grid(row=6, column=0, sticky="e")
-    duration_entry = Entry(add_win)
-    duration_entry.grid(row=6, column=1)
+    duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración")
+    duration_entry.pack(pady=5)
     duration_entry.insert(0, class_edit['key'].split("_")[2])
 
-    Label(add_win, text="Tipo:").grid(row=7, column=0, sticky="e")
-    type_var = StringVar(value="Teoría")
-    OptionMenu(add_win, type_var, "Teoría", "Laboratorio").grid(row=7, column=1)
-    type_var.set("Teoría" if class_edit['key'] in c_info else "Laboratorio")
+    type_var = ctk.StringVar(value="Teoría" if class_edit['key'] in c_info else "Laboratorio")
+    ctk.CTkOptionMenu(add_win,
+                      values=["Teoría", "Laboratorio"],
+                      variable=type_var, state="disabled").pack(pady=5)
 
-
-    Label(add_win, text="Grupo(s)").grid(row=8, column=0, sticky="e")
-    group_entry = Entry(add_win)
-    group_entry.grid(row=8, column=1)
-    group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))
+    group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)")
+    group_entry.pack(pady=5)
+    group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))    
 
     # --- Save Handler ---
     def save_class():
@@ -529,11 +545,8 @@ def open_edit_class_window():
         add_win.destroy()
 
     # --- Bind Save and Cancel ---
-    save_button = Button(add_win, text="Guardar", command=save_class)
-    save_button.grid(row=9, column=0, columnspan=2)
-
-    cancel_button = Button(add_win, text="Cancelar", command=cancel_edit)
-    cancel_button.grid(row=10, column=0, columnspan=2)
+    ctk.CTkButton(add_win, text="Guardar", command=save_class).pack(pady=20)
+    ctk.CTkButton(add_win, text="Cancelar", command=cancel_edit).pack(pady=5)
 
     add_win.transient(window)
     add_win.grab_set()

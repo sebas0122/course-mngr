@@ -84,6 +84,22 @@ class dnd_label:
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
 
+        # obscure this label's background and restore any previously obscured label
+        prev = getattr(dnd_label, "active_label", None)
+        if prev is not None and prev is not self:
+            # restore previous label appearance
+            try:
+                prev.label.config(bg=getattr(prev, "_prev_bg", prev.label.cget("bg")), fg="black")
+            except Exception:
+                pass
+
+        if getattr(dnd_label, "active_label", None) is not self:
+            # save current appearance so it can be restored later
+            self._prev_bg = self.label.cget("bg")
+            # obscure background: remove image and set a dark background color
+            self.label.config(bg="#444444", fg="white")
+            dnd_label.active_label = self
+
         nombre = self.label.cget("text") ##< Get the text of the label
         grupos = list(map(int, nombre.split("\n")[1].strip("[]").split(",")))
         print(f'Grupos: {grupos}')
