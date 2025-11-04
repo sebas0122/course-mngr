@@ -6,6 +6,9 @@ ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] ##< days is to set the names of the days of the week
 days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"] ##< days_es is to set the names of the days of the week in Spanish
 
+# --- NEW: occupancy map to handle responsive widths when multiple items share a slot
+slot_occupancy = {}  # key: (index_x, index_y, hours, type) -> list of Label widgets
+
 classes_list = [
     ["class2_2,1,2,3", "blank_2", "class3_3,3,4,5", "blank_5", "class4_4"],
     ["class2_2", "class2_2", "blank_4", "class_2"],
@@ -51,6 +54,9 @@ class dnd_label:
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
+        self.w = w ##< The width of the label
+        self.h = h ##< The height of the label
+        self.image = image
 
         self.label = Label(window,
                            image=image,
@@ -75,6 +81,85 @@ class dnd_label:
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
         self.label.bind("<ButtonRelease-1>", self.on_release) ##< Bind the left mouse button release to the on_release method
+
+        # store initial pos and slot info
+        self._initial_pos = (posx, posy)
+        self._slot_key = None
+        # register this widget into the occupancy map so layout can be computed responsively
+        if xlimit and ylimit:
+            try:
+                self.register_to_slot(posx, posy)
+            except Exception as e:
+                print(f"Error in layout update: {e}")
+                pass
+    
+     # --- NEW helpers for slot registration/layout ---
+    def _compute_slot_from_pos(self, posx, posy):
+        if not xlimit or not ylimit:
+            return None
+        # Normalize position by removing lab_displacement for labs
+        normalized_x = posx - (self.lab_displacement if self.type == "lab" else 0)
+        diff_x = [abs(x - normalized_x) for x in xlimit]
+        index_x = diff_x.index(min(diff_x))
+        diff_y = [abs(y - posy) for y in ylimit]
+        index_y = diff_y.index(min(diff_y))
+        return (index_x, index_y, self.hours, self.type)
+
+    def register_to_slot(self, posx=None, posy=None):
+        # register label widget into slot_occupancy and trigger layout update
+        if posx is None or posy is None:
+            posx, posy = self.label.winfo_x(), self.label.winfo_y()
+        slot = self._compute_slot_from_pos(posx, posy)
+        if slot is None:
+            return
+        # ensure list exists and append if not present
+        lst = slot_occupancy.setdefault(slot, [])
+        # remove any stale or duplicate entries first
+        lst = [w for w in lst if w.winfo_exists()]
+        if self.label not in lst:
+            lst.append(self.label)
+        slot_occupancy[slot] = lst
+        self._slot_key = slot
+        self._update_slot_layout(slot)
+
+    def unregister_from_slot(self, slot):
+        if slot is None:
+            return
+        lst = slot_occupancy.get(slot, [])
+        lst = [w for w in lst if w.winfo_exists() and w is not self.label]
+        if lst:
+            slot_occupancy[slot] = lst
+            self._update_slot_layout(slot)
+        else:
+            slot_occupancy.pop(slot, None)
+        if self._slot_key == slot:
+            self._slot_key = None
+
+    def _update_slot_layout(self, slot):
+        if slot not in slot_occupancy:
+            return
+        widgets = [w for w in slot_occupancy[slot] if w.winfo_exists()]
+        if not widgets:
+            slot_occupancy.pop(slot, None)
+            return
+        slot_occupancy[slot] = widgets
+
+        index_x, index_y, hours, typ = slot
+        cell_width = self.w
+        n = max(1, len(widgets))
+        per_w = int(cell_width / n)
+        
+        # Base x already at grid position; add lab_displacement once for all labs
+        base_x = xlimit[index_x] + (self.lab_displacement if typ == "lab" else 0)
+        
+        for idx, w in enumerate(widgets):
+            target_y = ylimit[index_y]
+            target_x = base_x + idx * per_w  # No conditional displacement here
+            try:
+                w.place_configure(x=target_x, y=target_y, width=per_w)
+            except Exception as e:
+                print(f"Error in layout update: {e}")
+                pass
     
     ## on_press method
     # This method is used to get the position of the mouse when the label is pressed.
@@ -90,7 +175,8 @@ class dnd_label:
             # restore previous label appearance
             try:
                 prev.label.config(bg=getattr(prev, "_prev_bg", prev.label.cget("bg")), fg="black")
-            except Exception:
+            except Exception as e:
+                print(f"Error in layout update: {e}")
                 pass
 
         if getattr(dnd_label, "active_label", None) is not self:
@@ -168,10 +254,22 @@ class dnd_label:
                 self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
 
-            if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
-                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
+            # Update occupancy: unregister from old slot and register into new
+            old_slot = self._slot_key
+            new_slot = (index_x, index_y, self.hours, self.type)
+            if old_slot != new_slot:
+                try:
+                    self.unregister_from_slot(old_slot)
+                except Exception as e:
+                    print(f"Error in layout update: {e}")
+                    pass
+                # directly place will be handled by _update_slot_layout
+                self.register_to_slot(self.label.winfo_x(), self.label.winfo_y())
             else:
-                self.label.place(x=xlimit[index_x], y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid.
+                if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
+                    self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
+                else:
+                    self.label.place(x=xlimit[index_x], y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid.
         
         elif self.type == "lab": ##< Check if the label is a lab
             diff_x = [abs(x - self.label.winfo_x() + self.lab_displacement) for x in xlimit] ##< Get the difference between the x position of the label and the x positions of the grid, adding the lab displacement to the x position of the label
@@ -192,8 +290,19 @@ class dnd_label:
                 self.c_edited.append(key_info) ##< Add the edited class key to the list
                 self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
-
-            if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
-                self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
+            
+            # Update occupancy for lab similarly to class
+            old_slot = self._slot_key
+            new_slot = (index_x, index_y, self.hours, self.type)
+            if old_slot != new_slot:
+                try:
+                    self.unregister_from_slot(old_slot)
+                except Exception as e:
+                    print(f"Error in layout update: {e}")
+                    pass
+                self.register_to_slot(self.label.winfo_x(), self.label.winfo_y())
             else:
-                self.label.place(x=xlimit[index_x]+self.lab_displacement, y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid, adding the lab displacement to the x position of the label.
+                if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
+                    self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
+                else:
+                    self.label.place(x=xlimit[index_x]+self.lab_displacement, y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid, adding the lab displacement to the x position of the label.
