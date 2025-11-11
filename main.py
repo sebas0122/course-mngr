@@ -280,6 +280,10 @@ def open_add_class_window():
     mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
     mat_entry.pack(padx=5, side=LEFT)
 
+    # small mapping for codes -> names (add more codes as needed)
+    _fac_map = {"25": "Ingeniería"}
+    _dep_map = {"98": "Electrónica"}
+
     # --- Row for code labels ---
     row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
     row_code_labels_frame.pack(pady=2)
@@ -290,8 +294,17 @@ def open_add_class_window():
     dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
     dep_label.pack(padx=5, side=LEFT)
 
-    mat_label = ctk.CTkLabel(row_code_labels_frame, text="<Materia>")
-    mat_label.pack(padx=5, side=LEFT)
+    def _update_code_labels(event=None):
+        f = fac_entry.get().strip()
+        d = dep_entry.get().strip()
+        fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
+        dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
+
+    # bind updates so label changes while typing or after leaving the field
+    fac_entry.bind("<KeyRelease>", _update_code_labels)
+    fac_entry.bind("<FocusOut>", _update_code_labels)
+    dep_entry.bind("<KeyRelease>", _update_code_labels)
+    dep_entry.bind("<FocusOut>", _update_code_labels)
 
     # --- Row for professor ID and name ---
     row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
@@ -299,8 +312,42 @@ def open_add_class_window():
 
     prof_entry = ctk.CTkEntry(row_prof_frame, placeholder_text="ID del Profesor")
     prof_entry.pack(padx=2, side=LEFT)
+
+    p_info = getProfessorsData(supabase_instance)
+    print(p_info)
+    # build a safe id->name mapping for different return shapes from getProfessorsData
+    def _build_prof_map(prof_data):
+        mapping = {}
+        if isinstance(prof_data, dict):
+            for k, v in prof_data.items():
+                mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
+            return mapping
+        try:
+            for prof in prof_data:
+                if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
+                    mapping[str(prof['id'])] = prof['name']
+                elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
+                    mapping[str(prof[0])] = prof[1]
+                elif isinstance(prof, str):
+                    if ':' in prof:
+                        id_, name = prof.split(':', 1)
+                        mapping[id_.strip()] = name.strip()
+            return mapping
+        except TypeError:
+            return {}
+
+    _p_map = _build_prof_map(p_info)
+    print(_p_map)
     prof_label = ctk.CTkLabel(row_prof_frame, text="<Nombre del profesor>")
     prof_label.pack(padx=2, side=LEFT)
+
+    def _update_prof_label(event=None):
+        p = prof_entry.get().strip()
+        prof_label.configure(text=_p_map.get(p, "<Nombre del profesor>"))
+
+    # bind updates so label changes while typing or after leaving the field
+    prof_entry.bind("<KeyRelease>", _update_prof_label)
+    prof_entry.bind("<FocusOut>", _update_prof_label)
 
     room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula")
     room_entry.pack(pady=5)
@@ -433,25 +480,35 @@ def open_edit_class_window():
     dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90)
     dep_entry.pack(padx=5, side=LEFT)
     dep_entry.insert(0, c_info[class_edit['key']]['dependencia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['dependencia'])
-    dep_entry.configure(state="disabled")
+    dep_entry.configure(state="disabled")   
 
     mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
     mat_entry.pack(padx=5, side=LEFT)
     mat_entry.insert(0, c_info[class_edit['key']]['materia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['materia'])
     mat_entry.configure(state="disabled")
 
+    # mapping for edit window (same as above; extend as needed)
+    _fac_map = {"25": "Ingeniería"}
+    _dep_map = {"98": "Electrónica"}
+
     # --- Row for code labels ---
     row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
     row_code_labels_frame.pack(pady=2)
 
     fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>")
-    fac_label.pack(padx=5, side=LEFT)
+    fac_label.pack(padx=10, side=LEFT)
 
     dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
     dep_label.pack(padx=5, side=LEFT)
 
-    mat_label = ctk.CTkLabel(row_code_labels_frame, text="<Materia>")
-    mat_label.pack(padx=5, side=LEFT)
+    def _update_code_labels_edit(event=None):
+        f = fac_entry.get().strip()
+        d = dep_entry.get().strip()
+        fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
+        dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
+
+    # entries are disabled in edit window; just set labels once
+    _update_code_labels_edit()
 
     # --- Row for professor ID and name ---
     row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
