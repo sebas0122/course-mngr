@@ -413,7 +413,7 @@ update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 
 def open_edit_class_window():
     add_win = Toplevel(window)
-    add_win.title("Add Class")
+    add_win.title("Edit Class")
     add_win.geometry("400x500")
 
     # --- Form Fields ---
@@ -509,6 +509,7 @@ def open_edit_class_window():
 
         # Update data dictionary
         old_key = class_edit['key']
+        print(f"Old key: {old_key}")
         new_key = f"{name}_{start_hour}_{duration}_{day}_{room}"
         info_dict = {
             "id": l_info[old_key]['id'] if old_key in l_info else c_info[old_key]['id'],
@@ -521,6 +522,16 @@ def open_edit_class_window():
             "grupo": group,
             "aula": room
         }
+
+        cell_name = f"{c_info[old_key]['nombre']}\n{c_info[old_key]['grupo']}" if old_key in c_info else f"{l_info[old_key]['nombre']}\n{l_info[old_key]['grupo']}"
+
+        for widget in window.winfo_children():
+            if widget in lbs_ids:
+                print(f'Widget text: {widget.cget("text")}')
+                if isinstance(widget, Label) and widget.cget("text") == cell_name:
+                    #Change label text
+                    widget.config(text=f"{name}\n{group}")
+                    break
 
         if is_lab:
             if old_key in l_info:
@@ -536,6 +547,8 @@ def open_edit_class_window():
         else:
             c_info[new_key] = info_dict
             classes_edited_keys.append(new_key)
+        
+        class_edit['key'] = new_key
 
         # Close the edit window
         add_win.destroy()

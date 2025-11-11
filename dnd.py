@@ -251,6 +251,7 @@ class dnd_label:
                 # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
                 del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
                 self.c_edited.append(key_info) ##< Add the edited class key to the list
+                self.cell_to_edit['key'] = key_info ##< Set the key of the cell to edit in the edit class window
                 self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
 
@@ -288,6 +289,7 @@ class dnd_label:
                 # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
                 del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
                 self.c_edited.append(key_info) ##< Add the edited class key to the list
+                self.cell_to_edit['key'] = key_info ##< Set the key of the cell to edit in the edit class window
                 self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
                 # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
             
