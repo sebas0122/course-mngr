@@ -271,28 +271,26 @@ def open_add_class_window():
     row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
     row_code_frame.pack(pady=5)
 
-    fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70)
-    fac_entry.pack(padx=5, side=LEFT)
+    fac_column = ctk.CTkFrame(row_code_frame, fg_color="transparent")
+    fac_column.pack(side=LEFT, padx=5)
+    fac_entry = ctk.CTkEntry(fac_column, placeholder_text="Facultad", width=70)
+    fac_entry.pack()
+    fac_label = ctk.CTkLabel(fac_column, text="<Facultad>")
+    fac_label.pack(pady=(2, 0))
 
-    dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90)
-    dep_entry.pack(padx=5, side=LEFT)
+    dep_column = ctk.CTkFrame(row_code_frame, fg_color="transparent")
+    dep_column.pack(side=LEFT, padx=5)
+    dep_entry = ctk.CTkEntry(dep_column, placeholder_text="Dependencia", width=90)
+    dep_entry.pack()
+    dep_label = ctk.CTkLabel(dep_column, text="<Dependencia>")
+    dep_label.pack(pady=(2, 0))
 
     mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
     mat_entry.pack(padx=5, side=LEFT)
 
     # small mapping for codes -> names (add more codes as needed)
     _fac_map = {"25": "Ingeniería"}
-    _dep_map = {"98": "Electrónica"}
-
-    # --- Row for code labels ---
-    row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
-    row_code_labels_frame.pack(pady=2)
-
-    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>")
-    fac_label.pack(padx=5, side=LEFT)
-
-    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
-    dep_label.pack(padx=5, side=LEFT)
+    _dep_map = {"98": "Electrónica"}    
 
     def _update_code_labels(event=None):
         f = fac_entry.get().strip()
@@ -306,137 +304,192 @@ def open_add_class_window():
     dep_entry.bind("<KeyRelease>", _update_code_labels)
     dep_entry.bind("<FocusOut>", _update_code_labels)
 
-    # --- Row for professor ID and name ---
-    row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
-    row_prof_frame.pack(pady=5)
+    # --- Labs multi-row UI ---
+    labs_rows = []
 
-    prof_entry = ctk.CTkEntry(row_prof_frame, placeholder_text="ID del Profesor")
-    prof_entry.pack(padx=2, side=LEFT)
+    labs_container = ctk.CTkFrame(add_win, fg_color="transparent")
+    labs_container.pack(pady=5, fill='x')
 
-    p_info = getProfessorsData(supabase_instance)
-    print(p_info)
-    # build a safe id->name mapping for different return shapes from getProfessorsData
-    def _build_prof_map(prof_data):
-        mapping = {}
-        if isinstance(prof_data, dict):
-            for k, v in prof_data.items():
-                mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
-            return mapping
-        try:
-            for prof in prof_data:
-                if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
-                    mapping[str(prof['id'])] = prof['name']
-                elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
-                    mapping[str(prof[0])] = prof[1]
-                elif isinstance(prof, str):
-                    if ':' in prof:
-                        id_, name = prof.split(':', 1)
-                        mapping[id_.strip()] = name.strip()
-            return mapping
-        except TypeError:
-            return {}
+    def add_lab_row(initial=None):
+        """Add a single schedule row (type, room, day, start, duration) to labs_container."""
+        row = ctk.CTkFrame(labs_container, fg_color="transparent")
+        row.pack(pady=2)
 
-    _p_map = _build_prof_map(p_info)
-    print(_p_map)
-    prof_label = ctk.CTkLabel(row_prof_frame, text="<Nombre del profesor>")
-    prof_label.pack(padx=2, side=LEFT)
+        # type selector: Teoría or Laboratorio
 
-    def _update_prof_label(event=None):
-        p = prof_entry.get().strip()
-        prof_label.configure(text=_p_map.get(p, "<Nombre del profesor>"))
+        prof_column = ctk.CTkFrame(row, fg_color="transparent")
+        prof_column.pack(side=LEFT, padx=5)
+        prof_entry = ctk.CTkEntry(prof_column, placeholder_text="ID del Profesor")
+        prof_entry.pack()
+        prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>")
+        prof_label.pack(pady=(2, 0))
 
-    # bind updates so label changes while typing or after leaving the field
-    prof_entry.bind("<KeyRelease>", _update_prof_label)
-    prof_entry.bind("<FocusOut>", _update_prof_label)
+        t_var = ctk.StringVar(value="Teoría")
+        ctk.CTkOptionMenu(row, values=["Teoría", "Laboratorio"], variable=t_var, width=100).pack(side=LEFT, padx=2)
 
-    room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula")
-    room_entry.pack(pady=5)
+        r_entry = ctk.CTkEntry(row, placeholder_text="Aula", width=80)
+        r_entry.pack(side=LEFT, padx=2)
+        d_var = ctk.StringVar(value="Lunes")
+        ctk.CTkOptionMenu(row, values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], variable=d_var, width=100).pack(side=LEFT, padx=2)
+        s_entry = ctk.CTkEntry(row, placeholder_text="Inicio", width=70)
+        s_entry.pack(side=LEFT, padx=2)
+        dur_entry = ctk.CTkEntry(row, placeholder_text="Duración", width=70)
+        dur_entry.pack(side=LEFT, padx=2)
 
-    day_var = ctk.StringVar(value="Día")
-    ctk.CTkOptionMenu(add_win,
-                      values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-                      variable=day_var).pack(pady=5)
+        group_entry = ctk.CTkEntry(row, placeholder_text="Grupo(s)", width=50)
+        group_entry.pack(side=LEFT, padx=2)
 
-    start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio")
-    start_entry.pack(pady=5)
+        remove_btn = ctk.CTkButton(row, text="-", width=30, command=lambda: remove_lab_row(row))
+        remove_btn.pack(side=LEFT, padx=4)
 
-    duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración")
-    duration_entry.pack(pady=5)
+        if initial:
+            prof_entry.insert(0, initial.get('profesor', ''))
+            t_var.set(initial.get('type', 'Teoría'))
+            r_entry.insert(0, initial.get('aula', ''))
+            d_var.set(initial.get('dia', 'Lunes'))
+            s_entry.insert(0, str(initial.get('inicio', '')))
+            dur_entry.insert(0, str(initial.get('duracion', '')))
+            group_entry.insert(0, str(initial.get('grupo', '')))
 
-    type_var = ctk.StringVar(value="Tipo")
-    ctk.CTkOptionMenu(add_win,
-                      values=["Teoría", "Laboratorio"],
-                      variable=type_var).pack(pady=5)
+        labs_rows.append({'frame': row, 'prof': prof_entry, 'type': t_var, 'room': r_entry, 'day_var': d_var, 'start': s_entry, 'duration': dur_entry, 'group': group_entry})
+        # print(prof_entry, t_var, r_entry, d_var, s_entry, dur_entry, group_entry)
 
-    group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)")
-    group_entry.pack(pady=5)
+        p_info = getProfessorsData(supabase_instance)
+        # build a safe id->name mapping for different return shapes from getProfessorsData
+        def _build_prof_map(prof_data):
+            mapping = {}
+            if isinstance(prof_data, dict):
+                for k, v in prof_data.items():
+                    mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
+                return mapping
+            try:
+                for prof in prof_data:
+                    if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
+                        mapping[str(prof['id'])] = prof['name']
+                    elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
+                        mapping[str(prof[0])] = prof[1]
+                    elif isinstance(prof, str):
+                        if ':' in prof:
+                            id_, name = prof.split(':', 1)
+                            mapping[id_.strip()] = name.strip()
+                return mapping
+            except TypeError:
+                return {}
+
+        _p_map = _build_prof_map(p_info)
+        
+
+        def _update_prof_label(event=None):
+            p = prof_entry.get().strip()
+            prof_label.configure(text=_p_map.get(p, "<Nombre del profesor>"))
+
+        # bind updates so label changes while typing or after leaving the field
+        prof_entry.bind("<KeyRelease>", _update_prof_label)
+        prof_entry.bind("<FocusOut>", _update_prof_label)
+
+    def remove_lab_row(frame):
+        # remove the row from UI and internal list
+        for r in labs_rows:
+            if r['frame'] == frame:
+                r['frame'].destroy()
+                labs_rows.remove(r)
+                break
+
+    # add-row button (plus sign) - now adds any entry (theory or lab)
+    add_lab_btn = ctk.CTkButton(add_win, text="+ Añadir Entrada", command=lambda: add_lab_row())
+    add_lab_btn.pack(pady=2)
+
+    # start with no extra lab rows by default; user can add
 
     # --- Save Handler ---
     def save_class():
-        global p_info, lbs_ids
-        name = name_entry.get()
-        fac = fac_entry.get()
-        dep = dep_entry.get()
-        mat = mat_entry.get()
-        professor = int(prof_entry.get())
-        room = room_entry.get()
-        day = day_var.get()
-        start_hour = int(start_entry.get())
-        duration = int(duration_entry.get())
-        is_lab = (type_var.get() == "Laboratorio")
-        group = group_entry.get()
+        print("Saving class...")
+        """Save all rows: each row can be Teoría or Laboratorio. Name/code/prof/group come from the header fields."""
+        global p_info, lbs_ids, classes_edited_keys, labs_edited_keys, colors_idx, class_colors_dict
+        name = name_entry.get().strip()
+        fac = fac_entry.get().strip()
+        dep = dep_entry.get().strip()
+        mat = mat_entry.get().strip()
 
-        # Update data dictionary
-        key = f"{name}_{start_hour}_{duration}_{day}_{room}"
-        info_dict = {
-            "id": [0],
-            "nivel": int(opt.get().split(" ")[1]),
-            "nombre": name,
-            "facultad": fac,
-            "dependencia": dep,
-            "materia": mat,
-            "codigo": f"{fac}{dep}{mat}",
-            "profesor": [professor],
-            "grupo": [int(g.strip()) for g in group.split(",")] if "," in group else [int(group)],
-            "aula": room
-        }
+        if len(labs_rows) == 0:
+            print("No entries to add.")
+            # nothing to add
+            return
 
-        if is_lab:
-            l_info[key] = info_dict
-            labs_edited_keys.append(key)
-        else:
-            c_info[key] = info_dict
-            classes_edited_keys.append(key)
-
-        # Add to UI immediately
+        # ensure color exists for the course name
         bg_color = class_colors_dict.get(name)
         if not bg_color:
-            global colors_idx
             class_colors_dict[name] = colors[colors_idx]
             bg_color = class_colors_dict[name]
             colors_idx += 1
 
-        dnd_label(window=window,
-                  image=pixel,
-                  geometry_width=screen_width,
-                  geometry_height=screen_height,
-                  lab_disp=lab_displacement if is_lab else 0,
-                  text=f"{name}\n{info_dict['grupo']}",
-                  bg_color=bg_color,
-                  w=single_width-4,
-                  h=(duration * single_height) - 4,
-                  posx=xlimit[days_es.index(day)] + (lab_displacement if is_lab else 0),
-                  posy=ylimit[start_hour - 6],
-                  hours=duration,
-                  type="lab" if is_lab else "class",
-                  room=room,
-                  info_label=information_label,
-                  cl_info=l_info if is_lab else c_info,
-                  proffs_info=p_info,
-                  cell_to_edit=class_edit,
-                  c_edited=labs_edited_keys if is_lab else classes_edited_keys) ##< Create the drag&drop label for the class or lab
-        
-        lbs_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
+        for r in list(labs_rows):
+            try:
+                prof_text = r['prof'].get().strip()
+                try:
+                    professor_list = [int(p.strip()) for p in prof_text.split(",")] if "," in prof_text else [int(prof_text)]
+                except Exception:
+                    professor_list = [0]
+                entry_room = r['room'].get().strip()
+                entry_day = r['day_var'].get()
+                entry_start = int(r['start'].get())
+                entry_dur = int(r['duration'].get())
+                entry_type = r['type'].get()
+                group_text = r['group'].get().strip()
+                try:
+                    group_list = [int(g.strip()) for g in group_text.split(",")] if "," in group_text else [int(group_text)]
+                except Exception:
+                    group_list = [0]
+            except Exception:
+                # skip invalid row
+                continue
+
+            print(f"Adding entry: {name}, {fac}, {dep}, {mat}, Prof: {professor_list}, Room: {entry_room}, Day: {entry_day}, Start: {entry_start}, Dur: {entry_dur}, Type: {entry_type}, Group: {group_list}")
+
+            is_lab = (entry_type == "Laboratorio")
+            key = f"{name}_{entry_start}_{entry_dur}_{entry_day}_{entry_room}"
+            info_dict = {
+                "id": [0],
+                "nivel": int(opt.get().split(" ")[1]),
+                "nombre": name,
+                "facultad": fac,
+                "dependencia": dep,
+                "materia": mat,
+                "codigo": f"{fac}{dep}{mat}",
+                "profesor": professor_list,
+                "grupo": group_list,
+                "aula": entry_room
+            }
+
+            if is_lab:
+                l_info[key] = info_dict
+                labs_edited_keys.append(key)
+            else:
+                c_info[key] = info_dict
+                classes_edited_keys.append(key)
+
+            # Add UI label
+            dnd_label(window=window,
+                      image=pixel,
+                      geometry_width=screen_width,
+                      geometry_height=screen_height,
+                      lab_disp=lab_displacement if is_lab else 0,
+                      text=f"{name}\n{info_dict['grupo']}",
+                      bg_color=bg_color,
+                      w=single_width-4,
+                      h=(entry_dur * single_height) - 4,
+                      posx=xlimit[days_es.index(entry_day)] + (lab_displacement if is_lab else 0),
+                      posy=ylimit[entry_start - 6],
+                      hours=entry_dur,
+                      type="lab" if is_lab else "class",
+                      room=entry_room,
+                      info_label=information_label,
+                      cl_info=l_info if is_lab else c_info,
+                      proffs_info=p_info,
+                      cell_to_edit=class_edit,
+                      c_edited=labs_edited_keys if is_lab else classes_edited_keys)
+
+            lbs_ids.append(window.winfo_children()[-1])
 
         add_win.destroy()
 
