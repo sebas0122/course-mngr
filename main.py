@@ -13,16 +13,21 @@ ctk.set_default_color_theme("blue")
 
 window = Tk() ##< Create a window
 
-window.attributes('-fullscreen', True) ##< Set the window to fullscreen
+window.attributes('-fullscreen', False)
+window.state('zoomed')  ##< Maximize the window (windowed full-screen)
 
-screen_width = window.winfo_screenwidth() ##< Get the screen width
+# ensure window is mapped and layout updated, then use the window's actual size
+window.update_idletasks()
+screen_width = window.winfo_width() or window.winfo_screenwidth() ##< Get the usable window width (excludes taskbar when maximized)
+screen_height = window.winfo_height() or window.winfo_screenheight() ##< Get the usable window height (excludes taskbar when maximized)
 
-screen_height = window.winfo_screenheight() ##< Get the screen height
+# fallback: on some systems winfo_width/height may be 1 — use update() if needed
+if screen_width <= 1 or screen_height <= 1:
+    window.update()
+    screen_width = window.winfo_width() or window.winfo_screenwidth()
+    screen_height = window.winfo_height() or window.winfo_screenheight()
 
 pixel = PhotoImage(width=1, height=1)
-
-quit_button = Button(window, text="Quit", background="red", command=window.quit) ##< Create a quit button
-quit_button.place(x=int(screen_width*(14/15)), y=0) ##< Set the position of the quit button
 
 single_width = int(screen_width / 14) ##< Set the width of a single cell
 single_height = int(screen_height / 22) ##< Set the height of a single cell
@@ -145,8 +150,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         lab_disp=0,
                         text=temp[0],
                         bg_color=class_colors_dict[c_name],
-                        w=single_width-4,
-                        h=(c_duration*single_height)-4,
+                        w=single_width,
+                        h=(c_duration*single_height),
                         posx=xlimit[i],
                         posy=ylimit[c_st_hour-6],
                         hours=c_duration,
@@ -179,8 +184,8 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         lab_disp=lab_displacement,
                         text=temp[0],
                         bg_color=class_colors_dict[c_name],
-                        w=single_width-4,
-                        h=(c_duration*single_height)-4,
+                        w=single_width,
+                        h=(c_duration*single_height),
                         posx=xlimit[i]+lab_displacement,
                         posy=ylimit[c_st_hour-6],
                         hours=c_duration,

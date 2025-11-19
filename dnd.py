@@ -1,4 +1,5 @@
 from tkinter import *
+import customtkinter as ctk
 
 xlimit = [] ##< xlimit is to locate x positions of the labels in the grid
 ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
@@ -58,15 +59,15 @@ class dnd_label:
         self.h = h ##< The height of the label
         self.image = image
 
-        self.label = Label(window,
-                           image=image,
+        self.label = ctk.CTkLabel(window,
                            text=text,
-                           font=("Arial", 7),
-                           bg=bg_color,
+                           font=("Arial", 9),
+                           fg_color=bg_color,
+                           text_color="black",
                            width=w,
                            height=h,
                            wraplength=70,
-                           relief="solid",
+                           corner_radius=5,
                            compound="center") ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
         
         self.hours = hours ##< The number of hours the label will occupy in the grid
@@ -169,21 +170,23 @@ class dnd_label:
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
 
+        # print("on_press: x=%d, y=%d" % (self.label.winfo_x(), self.label.winfo_y())) ##< Print the position of the label when it is pressed
+
         # obscure this label's background and restore any previously obscured label
         prev = getattr(dnd_label, "active_label", None)
         if prev is not None and prev is not self:
             # restore previous label appearance
             try:
-                prev.label.config(bg=getattr(prev, "_prev_bg", prev.label.cget("bg")), fg="black")
+                prev.label.configure(fg_color=getattr(prev, "_prev_fg", prev.label.cget("fg_color")), text_color="black")
             except Exception as e:
                 print(f"Error in layout update: {e}")
                 pass
 
         if getattr(dnd_label, "active_label", None) is not self:
             # save current appearance so it can be restored later
-            self._prev_bg = self.label.cget("bg")
+            self._prev_fg = self.label.cget("fg_color")
             # obscure background: remove image and set a dark background color
-            self.label.config(bg="#444444", fg="white")
+            self.label.configure(fg_color="#444444", text_color="white")
             dnd_label.active_label = self
 
         nombre = self.label.cget("text") ##< Get the text of the label
@@ -199,9 +202,9 @@ class dnd_label:
 
         ## Shows in GUI the information of the course/lab being moved
         if(len(self.cl_info[key_info]['grupo'])>5):
-            self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\t\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+            self.info_label.configure(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\t\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\t\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
         else:
-            self.info_label.config(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
+            self.info_label.configure(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
 
     ## on_drag method
     # This method is used to move the label when the mouse is dragged.
