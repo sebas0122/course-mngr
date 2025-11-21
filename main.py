@@ -1,5 +1,6 @@
 from tkinter import *
-from tkinter import ttk
+from tkinter import ttk, filedialog
+
 import customtkinter as ctk
 
 from dnd import *
@@ -781,5 +782,43 @@ delete_button = ctk.CTkButton(window,
                               border_color="black",
                               hover_color="#c50000") ##< Create a button to delete the selected class or lab
 delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
+
+# Add this function before creating the export button
+def export_to_excel():
+    """Export the current database to an Excel file."""
+    try:
+        # Retrieve all data from the database
+        dataframe = retrieveDBTable(supabase_instance, "materias")
+        
+        if dataframe is None or dataframe.empty:
+            print("No data to export")
+            return
+        
+        # Open file dialog to choose save location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            initialfile=f"materias_{opt.get().replace(' ', '_')}.xlsx"
+        )
+        
+        if file_path:
+            # Export to Excel
+            dataframe.to_excel(file_path, index=False, sheet_name="Materias")
+            print(f"Data exported successfully to {file_path}")
+    except Exception as e:
+        print(f"Error exporting to Excel: {e}")
+
+# Add the Export button after the delete button
+export_button = ctk.CTkButton(window,
+                              text="Exportar\na Excel",
+                              text_color="black",
+                              height=int(single_height*3/2),
+                              width=int(single_width*3/4),
+                              command=export_to_excel,
+                              fg_color="lightcyan",
+                              border_width=1,
+                              border_color="black",
+                              hover_color="#a3e8e8")
+export_button.place(x=int(screen_width*(14/15)), y=single_height*16)
 
 window.mainloop() ##< Start the main loop of the window
