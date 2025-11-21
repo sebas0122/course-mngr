@@ -352,6 +352,118 @@ def open_add_class_window():
         prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>")
         prof_label.pack(pady=(2, 0))
 
+        # Create suggestion listbox for professors
+        p_info = getProfessorsData(supabase_instance)
+        # build a safe id->name mapping for different return shapes from getProfessorsData
+        def _build_prof_map(prof_data):
+            mapping = {}
+            if isinstance(prof_data, dict):
+                for k, v in prof_data.items():
+                    mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
+                return mapping
+            try:
+                for prof in prof_data:
+                    if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
+                        mapping[str(prof['id'])] = prof['name']
+                    elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
+                        mapping[str(prof[0])] = prof[1]
+                    elif isinstance(prof, str):
+                        if ':' in prof:
+                            id_, name = prof.split(':', 1)
+                            mapping[id_.strip()] = name.strip()
+                return mapping
+            except TypeError:
+                return {}
+
+        _p_map = _build_prof_map(p_info)
+
+        suggestion_listbox = None
+    
+        def show_suggestions(event=None):
+            nonlocal suggestion_listbox
+            full_text = prof_entry.get()
+            
+            # Get the current professor being typed (after last comma)
+            if ',' in full_text:
+                search_text = full_text.split(',')[-1].strip()
+            else:
+                search_text = full_text.strip()
+            
+            # Close existing listbox if present
+            if suggestion_listbox:
+                suggestion_listbox.destroy()
+                suggestion_listbox = None
+            
+            if not search_text:
+                return
+            
+            # Filter professors based on search
+            matches = []
+            for prof_id, prof_name in _p_map.items():
+                if search_text.lower() in prof_id.lower() or search_text.lower() in prof_name.lower():
+                    matches.append((prof_id, prof_name))
+            
+            if matches:
+                # Create suggestion listbox
+                suggestion_listbox = Listbox(prof_column, height=min(5, len(matches)), width=30)
+                suggestion_listbox.pack()
+                
+                for prof_id, prof_name in matches[:10]:  # Limit to 10 suggestions
+                    suggestion_listbox.insert(END, f"{prof_id} - {prof_name}")
+                
+                def select_suggestion(event):
+                    nonlocal suggestion_listbox
+                    selection = suggestion_listbox.curselection()
+                    if selection:
+                        selected = suggestion_listbox.get(selection[0])
+                        prof_id = selected.split(" - ")[0]
+                        
+                        # Get existing professors (before last comma)
+                        full_text = prof_entry.get()
+                        if ',' in full_text:
+                            existing_profs = ','.join(full_text.split(',')[:-1])
+                            new_text = f"{existing_profs}, {prof_id}"
+                        else:
+                            new_text = prof_id
+                        
+                        prof_entry.delete(0, END)
+                        prof_entry.insert(0, new_text)
+                        _update_prof_label()
+                    if suggestion_listbox:
+                        suggestion_listbox.destroy()
+                        suggestion_listbox = None
+                
+                suggestion_listbox.bind("<<ListboxSelect>>", select_suggestion)
+                suggestion_listbox.bind("<Double-Button-1>", select_suggestion)
+        
+        def hide_suggestions(event=None):
+            nonlocal suggestion_listbox
+            # Small delay to allow click on listbox
+            window.after(200, lambda: suggestion_listbox.destroy() if suggestion_listbox else None)
+        
+        def _update_prof_label(event=None):
+            full_text = prof_entry.get().strip()
+            
+            if not full_text:
+                prof_label.configure(text="<Nombre del profesor>")
+                return
+            
+            # Split by comma and get all professor IDs
+            prof_ids = [p.strip() for p in full_text.split(',') if p.strip()]
+            
+            # Get names for all professors
+            prof_names = []
+            for prof_id in prof_ids:
+                name = _p_map.get(prof_id, f"ID:{prof_id}")
+                prof_names.append(name)
+            
+            # Join all names with comma
+            display_text = ",\n".join(prof_names) if prof_names else "<Nombre del profesor>"
+            prof_label.configure(text=display_text)
+        
+        prof_entry.bind("<KeyRelease>", lambda e: (show_suggestions(e), _update_prof_label(e)))
+        prof_entry.bind("<FocusOut>", lambda e: (_update_prof_label(e), hide_suggestions(e)))
+
         t_var = ctk.StringVar(value="Teoría")
         ctk.CTkOptionMenu(row, values=["Teoría", "Laboratorio"], variable=t_var, width=100).pack(side=LEFT, padx=2)
 
@@ -381,39 +493,6 @@ def open_add_class_window():
 
         labs_rows.append({'frame': row, 'prof': prof_entry, 'type': t_var, 'room': r_entry, 'day_var': d_var, 'start': s_entry, 'duration': dur_entry, 'group': group_entry})
         # print(prof_entry, t_var, r_entry, d_var, s_entry, dur_entry, group_entry)
-
-        p_info = getProfessorsData(supabase_instance)
-        # build a safe id->name mapping for different return shapes from getProfessorsData
-        def _build_prof_map(prof_data):
-            mapping = {}
-            if isinstance(prof_data, dict):
-                for k, v in prof_data.items():
-                    mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
-                return mapping
-            try:
-                for prof in prof_data:
-                    if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
-                        mapping[str(prof['id'])] = prof['name']
-                    elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
-                        mapping[str(prof[0])] = prof[1]
-                    elif isinstance(prof, str):
-                        if ':' in prof:
-                            id_, name = prof.split(':', 1)
-                            mapping[id_.strip()] = name.strip()
-                return mapping
-            except TypeError:
-                return {}
-
-        _p_map = _build_prof_map(p_info)
-        
-
-        def _update_prof_label(event=None):
-            p = prof_entry.get().strip()
-            prof_label.configure(text=_p_map.get(p, "<Nombre del profesor>"))
-
-        # bind updates so label changes while typing or after leaving the field
-        prof_entry.bind("<KeyRelease>", _update_prof_label)
-        prof_entry.bind("<FocusOut>", _update_prof_label)
 
     def remove_lab_row(frame):
         # remove the row from UI and internal list
