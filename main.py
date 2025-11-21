@@ -13,7 +13,10 @@ ctk.set_default_color_theme("blue")
 
 window = Tk() ##< Create a window
 
+window_bg_color = "#fffcf7" ##< Set the background color of the window
+
 window.attributes('-fullscreen', False)
+window.configure(bg=window_bg_color) ##< Set the background color of the window
 window.state('zoomed')  ##< Maximize the window (windowed full-screen)
 
 # ensure window is mapped and layout updated, then use the window's actual size
@@ -38,6 +41,7 @@ lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to s
 for hour in range(6, 22):
     label = Label(window,
                   image=pixel,
+                  bg=window_bg_color,
                   text=f"{hour}:00",
                   width=single_width-4,
                   height=single_height,
@@ -56,7 +60,8 @@ information_label = Label(window,
                           image=pixel,
                           height=screen_height - (ylimit[-1]+2*single_height),
                           width=screen_width,
-                          compound="center") ##< Create a label for the test
+                          compound="center",
+                          bg=window_bg_color) ##< Create a label for the test
 information_label.place(x=0, y=ylimit[-1]+2*single_height) ##< Set the rest of the labels at 7:00 and above
 
 # Add labels for days
@@ -66,7 +71,8 @@ for day in range(6):
                   text=days_es[day],
                   width=2*single_width-4,
                   height=single_height-4,
-                  compound="center") ##< Create a label for each day
+                  compound="center",
+                  bg=window_bg_color) ##< Create a label for each day
     if day == 0:
         label.place(x=single_width, y=0) ##< Set the label position
         xlimit.append(single_width)      ##< Add the position to the xlimit list
@@ -79,6 +85,7 @@ for xl in xlimit:
     room = Label(window,
                  image=pixel,
                  text="Teoría",
+                 bg=window_bg_color,
                  width=single_width-4,
                  height=single_height-4,
                  compound="center") ##< Create a label for the room
@@ -87,6 +94,7 @@ for xl in xlimit:
     lab = Label(window,
                 image=pixel,
                 text="Lab",
+                bg=window_bg_color,
                 width=single_width-4,
                 height=single_height-4,
                 compound="center") ##< Create a label for the lab
@@ -222,7 +230,7 @@ def change_level():
     for widget in window.winfo_children():
         if len(lbs_ids) == 0:
             break
-        if isinstance(widget, Label):
+        if isinstance(widget, ctk.CTkLabel):
             if widget == lbs_ids[0]:
                 lbs_ids.remove(widget) ##< Remove the label id from the list
                 widget.destroy()
@@ -256,17 +264,31 @@ level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nive
 opt = StringVar(value="Nivel 1")
 
 # Dropdown menu  
-dd_menu = OptionMenu(window, opt, *level)
+dd_menu = ctk.CTkOptionMenu(window,
+                            variable=opt,
+                            text_color="black",
+                            values=level,
+                            width=int(single_width*3/4),
+                            fg_color="lightgray")
 dd_menu.place(x=int(screen_width*(14/15)), y=single_height*2) ##< Set the position of the quit button
 
 # Button to update label  
-dd_button = Button(window, text="Aceptar", command=change_level, background="lightblue")
+dd_button = ctk.CTkButton(window,
+                          text="Aceptar",
+                          text_color="black",
+                          height=int(single_height*3/2),
+                          width=int(single_width*3/4),
+                          command=change_level,
+                          fg_color="lightblue",
+                          border_width=1,
+                          border_color="black",
+                          hover_color="#a3cde8") ##< Create a button to update the label
 dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the position of the quit button
 
 def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
-    add_win.geometry("400x450")
+    add_win.geometry("700x500")
 
     # --- Form Fields ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
@@ -501,7 +523,16 @@ def open_add_class_window():
     ctk.CTkButton(add_win, text="Guardar", command=save_class).pack(pady=20)
 
 # Button for adding a new class
-add_button = Button(window, text="Añadir\nClase", command=open_add_class_window, background="lightyellow")
+add_button = ctk.CTkButton(window,
+                           text="Añadir\nClase",
+                           text_color="black",
+                           height=int(single_height*3/2),
+                           width=int(single_width*3/4),
+                           command=open_add_class_window,
+                           fg_color="lightyellow",
+                           border_width=1,
+                           border_color="black",
+                           hover_color="#f7f1a8") ##< Create a button to add a new class
 add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the position of the quit button
 
 def update_database():
@@ -513,7 +544,16 @@ def update_database():
     deleted_keys.clear() ##< Clear the list of deleted keys
     change_level() ##< Refresh the schedule display
 # Button for updating database
-update_button = Button(window, text="Guardar\nCambios", command=update_database, background="lightgreen") ##< Create a button to update the database
+update_button = ctk.CTkButton(window,
+                              text="Guardar\nCambios",
+                              text_color="black",
+                              height=int(single_height*3/2),
+                              width=int(single_width*3/4),
+                              command=update_database,
+                              fg_color="lightgreen",
+                              border_width=1,
+                              border_color="black",
+                              hover_color="#a3cde8") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 
 def open_edit_class_window():
@@ -643,7 +683,7 @@ def open_edit_class_window():
         for widget in window.winfo_children():
             if widget in lbs_ids:
                 print(f'Widget text: {widget.cget("text")}')
-                if isinstance(widget, Label) and widget.cget("text") == cell_name:
+                if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
                     #Change label text
                     widget.config(text=f"{name}\n{group}")
                     break
@@ -680,7 +720,16 @@ def open_edit_class_window():
     add_win.grab_set()
     window.wait_window(add_win)
 
-edit_button = Button(window, text="Editar\nClase", command=open_edit_class_window, background="lightblue")
+edit_button = ctk.CTkButton(window,
+                            text="Editar\nClase",
+                            text_color="black",
+                            height=int(single_height*3/2),
+                            width=int(single_width*3/4),
+                            command=open_edit_class_window,
+                            fg_color="lightblue",
+                            border_width=1,
+                            border_color="black",
+                            hover_color="#a3cde8") ##< Create a button to edit the selected class or lab
 edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
 
 def delete_selected_class():
@@ -703,7 +752,7 @@ def delete_selected_class():
         for widget in window.winfo_children():
             if widget in lbs_ids:
                 print(f'Widget text: {widget.cget("text")}')
-                if isinstance(widget, Label) and widget.cget("text") == cell_name:
+                if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
                     widget.destroy()
                     break
 
@@ -721,7 +770,16 @@ def delete_selected_class():
         # Clear selection
         class_edit['key'] = None
 
-delete_button = Button(window, text="Eliminar\nClase", command=delete_selected_class, background="red")
+delete_button = ctk.CTkButton(window,
+                              text="Eliminar\nClase",
+                              text_color="black",
+                              height=int(single_height*3/2),
+                              width=int(single_width*3/4),
+                              command=delete_selected_class,
+                              fg_color="red",
+                              border_width=1,                              
+                              border_color="black",
+                              hover_color="#c50000") ##< Create a button to delete the selected class or lab
 delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 
 window.mainloop() ##< Start the main loop of the window
