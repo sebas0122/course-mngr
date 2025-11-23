@@ -10,11 +10,11 @@ supabase_instance = connectSQL() ##< Connect to the database
 dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
 
 ctk.set_appearance_mode("Light") ##< Set the appearance mode to light
-ctk.set_default_color_theme("blue")
+ctk.set_default_color_theme("dark-blue")
 
 window = Tk() ##< Create a window
 
-window_bg_color = "#fffcf7" ##< Set the background color of the window
+window_bg_color = "#F0F1EF" ##< Set the background color of the window
 
 window.attributes('-fullscreen', False)
 window.configure(bg=window_bg_color) ##< Set the background color of the window
@@ -277,7 +277,7 @@ dd_menu.place(x=int(screen_width*(14/15)), y=single_height*2) ##< Set the positi
 dd_button = ctk.CTkButton(window,
                           text="Aceptar",
                           text_color="black",
-                          height=int(single_height*3/2),
+                          height=single_height,
                           width=int(single_width*3/4),
                           command=change_level,
                           fg_color="lightblue",
@@ -289,7 +289,7 @@ dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the posi
 def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
-    add_win.geometry("700x500")
+    add_win.geometry(f"{int(screen_width*0.8)}x{int(screen_height*0.7)}")
 
     # --- Form Fields ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
@@ -583,8 +583,8 @@ def open_add_class_window():
                       lab_disp=lab_displacement if is_lab else 0,
                       text=f"{name}\n{info_dict['grupo']}",
                       bg_color=bg_color,
-                      w=single_width-4,
-                      h=(entry_dur * single_height) - 4,
+                      w=single_width,
+                      h=(entry_dur * single_height),
                       posx=xlimit[days_es.index(entry_day)] + (lab_displacement if is_lab else 0),
                       posy=ylimit[entry_start - 6],
                       hours=entry_dur,
@@ -765,7 +765,7 @@ def open_edit_class_window():
                 print(f'Widget text: {widget.cget("text")}')
                 if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
                     #Change label text
-                    widget.config(text=f"{name}\n{group}")
+                    widget.configure(text=f"{name}\n{group}")
                     break
 
         if is_lab:

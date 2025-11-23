@@ -223,7 +223,7 @@ def build_schedule_map(schedule_dict):
         name, hour, duration, day = parse_schedule_key(key)
         slot = format_slot(day, hour, duration)
         for group in data['grupo']:
-            class_id = (data['id'][data['grupo'].index(group)], name, group)
+            class_id = (data['id'][data['grupo'].index(group)] if len(data['id']) > 1 else data['id'][0], name, group)
             if class_id not in class_map:
                 class_map[class_id] = {}
                 class_map[class_id]["new_schedule"] = []
