@@ -1,10 +1,12 @@
 from tkinter import *
 from tkinter import ttk, filedialog
+from unicodedata import name
 
 import customtkinter as ctk
 
+from professor import Professor
 from dnd import *
-from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db
+from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db, addProfessorToDB
 
 supabase_instance = connectSQL() ##< Connect to the database
 dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
@@ -833,6 +835,7 @@ def delete_selected_class():
             if widget in lbs_ids:
                 print(f'Widget text: {widget.cget("text")}')
                 if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
+                    lbs_ids.remove(widget) ##< Remove the label id from the list
                     widget.destroy()
                     break
 
@@ -899,5 +902,64 @@ export_button = ctk.CTkButton(window,
                               border_color="black",
                               hover_color="#a3e8e8")
 export_button.place(x=int(screen_width*(14/15)), y=single_height*16)
+
+def add_professor():
+    add_win = Toplevel(window)
+    add_win.title("Nuevo Profesor")
+    add_win.geometry("700x500")
+
+    # --- Form Fields ---
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre del Profesor")
+    name_entry.pack(pady=20)
+
+    id_entry = ctk.CTkEntry(add_win, placeholder_text="ID del Profesor")
+    id_entry.pack(pady=5)
+
+    email_entry = ctk.CTkEntry(add_win, placeholder_text="Email del Profesor", width=200)
+    email_entry.pack(pady=5)
+
+    cathedra_var = ctk.BooleanVar()
+    cathedra_check = ctk.CTkCheckBox(add_win, text="¿Es cátedra?", variable=cathedra_var)
+    cathedra_check.pack(pady=5)
+
+    hiring_var = ctk.StringVar(value="NO ESPECIFICADO")
+    ctk.CTkOptionMenu(add_win, values=["NO ESPECIFICADO","OCASIONAL","PLANTA","CÁTEDRA","CÁTEDRA CALENDARIO"],
+                      variable=hiring_var, width=100).pack(pady=5)
+    
+    education_var = ctk.StringVar(value="NO ESPECIFICADO")
+    ctk.CTkOptionMenu(add_win, values=["NO ESPECIFICADO", "PREGRADO", "MAESTRÍA", "DOCTORADO", "ESPECIALIZACIÓN"],
+                      variable=education_var, width=100).pack(pady=5)
+
+
+    # --- Save Handler ---
+    def save_professor():
+
+        prof = Professor(
+            name = name_entry.get().strip(),
+            id_number = int(id_entry.get().strip()),
+            email = email_entry.get().strip(),
+            cathedra = bool(cathedra_var.get()),
+            hiring = hiring_var.get(),
+            education = education_var.get()
+        )
+
+        if name:
+            addProfessorToDB(supabase_instance, prof)
+            add_win.destroy()
+
+    ctk.CTkButton(add_win, text="Guardar", command=save_professor).pack(pady=20)
+
+# Button for adding a new professor
+add_prof_button = ctk.CTkButton(window, 
+                                text="Añadir\nProfesor",
+                                text_color="black",
+                                height=int(single_height*3/2),
+                                width=int(single_width*3/4),
+                                command=add_professor,
+                                fg_color="lightpink",
+                                border_width=1,
+                                border_color="black",
+                                hover_color="#f7a8d1") ##< Create a button to add a new professor
+add_prof_button.place(x=int(screen_width*(14/15)), y=single_height*18) ##< Set the position of the quit button
 
 window.mainloop() ##< Start the main loop of the window

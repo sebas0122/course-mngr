@@ -304,3 +304,22 @@ def delete_class_in_db(supabase, deleted_keys):
             print(f"Deleted {id_to_delete} successfully!")
         else:
             print(f"Error deleting {id_to_delete}.")
+
+def addProfessorToDB(supabase, professor):
+    response = (
+        supabase
+        .table("profesores")
+        .insert({
+            "nombre": professor.name,
+            "identificacion": professor.id_number,
+            "correo": professor.email,
+            "catedra": professor.cathedra,
+            "contratacion": professor.hiring,
+            "formacion": professor.education
+            })
+        .execute()
+    )
+    if response.count == None:
+        print("Professor added successfully!")
+    else:
+        print("Error adding professor.")
