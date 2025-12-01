@@ -223,7 +223,7 @@ def build_schedule_map(schedule_dict):
         name, hour, duration, day = parse_schedule_key(key)
         slot = format_slot(day, hour, duration)
         for group in data['grupo']:
-            class_id = (data['id'][data['grupo'].index(group)], name, group)
+            class_id = (data['id'][data['grupo'].index(group)] if len(data['id']) > 1 else data['id'][0], name, group)
             if class_id not in class_map:
                 class_map[class_id] = {}
                 class_map[class_id]["new_schedule"] = []
@@ -233,6 +233,7 @@ def build_schedule_map(schedule_dict):
             class_map[class_id]["new_fac"] = data['facultad']
             class_map[class_id]["new_dep"] = data['dependencia']
             class_map[class_id]["new_mat"] = data['materia']
+            class_map[class_id]["new_level"] = data['nivel'] if 'nivel' in data else 0
 
     return class_map
 
@@ -272,7 +273,7 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                     "grupo": group,
                     "tipo": 'T-P',
                     "es_lab": is_lab,
-                    "nivel": 1,
+                    "nivel": slots['new_level'],
                     "horas_teoricas": 4,
                     "horas_practicas": 3,
                     "horas_tp": 0,
@@ -303,3 +304,22 @@ def delete_class_in_db(supabase, deleted_keys):
             print(f"Deleted {id_to_delete} successfully!")
         else:
             print(f"Error deleting {id_to_delete}.")
+
+def addProfessorToDB(supabase, professor):
+    response = (
+        supabase
+        .table("profesores")
+        .insert({
+            "nombre": professor.name,
+            "identificacion": professor.id_number,
+            "correo": professor.email,
+            "catedra": professor.cathedra,
+            "contratacion": professor.hiring,
+            "formacion": professor.education
+            })
+        .execute()
+    )
+    if response.count == None:
+        print("Professor added successfully!")
+    else:
+        print("Error adding professor.")

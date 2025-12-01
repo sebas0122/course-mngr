@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from courses_functions import getHoursLong, getClassSchedule
+from courses_functions import getHoursLong
 
 def read_excel_file(file_path, sheet_name="PROGRAMACION_2025_1"):
     try:
@@ -183,13 +183,19 @@ def getProfessorsData(dataframe):
     df_prof_id = dataframe["CÉDULA"]
     df_prof_name = dataframe["NOMBRE"]
     df_prof_email = dataframe["CORREO"]
+    df_prof_catedra = dataframe["CÁTEDRA?"]
+    df_prof_contratacion = dataframe["CONTRATACIÓN"]
+    df_prof_formacion = dataframe["FORMACIÓN"]
 
     for i in range(len(df_prof_id)):
         if pd.notna(df_prof_id[i]) and pd.notna(df_prof_name[i]) and pd.notna(df_prof_email[i]):
             professors.append([
                 int(df_prof_id[i]),
                 df_prof_name[i].strip(),
-                df_prof_email[i].strip()
+                df_prof_email[i].strip(),
+                df_prof_catedra[i].strip() == 'SI',
+                df_prof_contratacion[i].strip() if pd.notna(df_prof_contratacion[i]) else 'NO ESPECIFICADO',
+                df_prof_formacion[i].strip() if pd.notna(df_prof_formacion[i]) else 'NO ESPECIFICADO'
             ])
     
     return professors
@@ -203,8 +209,8 @@ def write_prof_db_to_file(template_file, out_db_file, data):
         file.write(template_content)  # Write the template content to the output file
         file.write("\n\n")  # Add a new line after the template content
         for prof in data:  # Iterate over the data
-            file.write("insert into profesores (identificacion, nombre, correo) values (")  # Write the insert statement with the table name and column names
-            file.write(f"{prof[0]}, '{prof[1]}', '{prof[2]}');\n")
+            file.write("insert into profesores (identificacion, nombre, correo, catedra, contratacion, formacion) values (")  # Write the insert statement with the table name and column names
+            file.write(f"{prof[0]}, '{prof[1]}', '{prof[2]}', {prof[3]}, '{prof[4]}', '{prof[5]}');\n")
 
 file_path = "data/prog.xlsx"
 # dataframe = read_excel_file(file_path)
@@ -214,4 +220,4 @@ file_path = "data/prog.xlsx"
 
 prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
 professors_data = getProfessorsData(prof_dataframe)
-write_prof_db_to_file("data/prof_table_template.log", "data/prof_db.log", professors_data)
+write_prof_db_to_file("data/prof_table_template.log", "data/prof_db_new.log", professors_data)
