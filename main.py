@@ -257,11 +257,21 @@ def change_level():
         c, l, c_info, l_info = getClassesList(dataframe, 8)
     elif opt.get() == "Nivel 9":
         c, l, c_info, l_info = getClassesList(dataframe, 9)
+    elif opt.get() == "Nivel 10":
+        c, l, c_info, l_info = getClassesList(dataframe, 10)
+    elif opt.get() == "E. Control":
+        c, l, c_info, l_info = getClassesList(dataframe, 11)
+    elif opt.get() == "E. Digitales":
+        c, l, c_info, l_info = getClassesList(dataframe, 12)
+    elif opt.get() == "E. Telecom":
+        c, l, c_info, l_info = getClassesList(dataframe, 13)
+    elif opt.get() == "E. Transversales":
+        c, l, c_info, l_info = getClassesList(dataframe, 14)
     p_info = getProfessorsData(supabase_instance)
     lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info)
 
 # Dropdown options
-level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9"] 
+level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9", "E. Control", "E. Digitales", "E. Telecom", "E. Transversales"] 
 
 # Selected option variable  
 opt = StringVar(value="Nivel 1")

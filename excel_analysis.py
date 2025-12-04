@@ -45,8 +45,20 @@ def getCleanData(dataframe):
                 if type(df_fac[i]) == str: ##< Check if the value in the FAC column is a string
                     if df_fac[i][-1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
                         nivel = df_fac[i][-1] ##< Get the last character of the FAC (because extracted from title "NIVEL N") column value as the nivel
-                        # if nivel == '9':
-                        #     break
+                    elif df_fac[i] == "E CONTROL":
+                        nivel = '11' ##< Set nivel to 11 if the FAC column value is "E CONTROL"
+                        electiva = True
+                    elif df_fac[i] == "E DIGITALES":
+                        nivel = '12' ##< Set nivel to 12 if the FAC column value is "E DIGITALES"
+                        electiva = True
+                    elif df_fac[i] == "ELECTIVAS TELECO":
+                        nivel = '13'  ##< Set nivel to 13 if the FAC column value is "ELECTIVAS TELECO"
+                        electiva = True
+                    elif df_fac[i] == "ELECTIVAS TRANSVERSALES":
+                        nivel = '14'  ##< Set nivel to 14 if the FAC column value is "ELECTIVAS TRANSVERSALES"
+                        electiva = True
+                    # if nivel == '9':
+                    #     break
                     else:
                         nivel = 0 ##< Set nivel to 0 if the last character is not a number
                         electiva = True ##< Set electiva to True if the last character is not a number
@@ -57,8 +69,8 @@ def getCleanData(dataframe):
                         continue ##< Skip the iteration if the value in the CUPO column is 0, means the course is not available
                     materia_limpia = df_materia[i].replace('\n', '') ##< Clean the MATERIA column value by removing new line characters
                     print(materia_limpia)
-                    if materia_limpia == 'PROG DISPOSITIVOS MÓVIL':
-                        break
+                    # if materia_limpia == 'PROG DISPOSITIVOS MÓVIL':
+                    #     break
                     # if 'É' in materia_limpia: ##< Check if the MATERIA column value contains "É"
                     #     materia_limpia = materia_limpia.replace('É', 'E') ##< Replace "É" with "E"
                     if int(df_dep[i]) == 47 or int(df_dep[i]) == 98: ##< Check if the value in the DEP column is 47 or 98, indicating a specific department
@@ -213,11 +225,11 @@ def write_prof_db_to_file(template_file, out_db_file, data):
             file.write(f"{prof[0]}, '{prof[1]}', '{prof[2]}', {prof[3]}, '{prof[4]}', '{prof[5]}');\n")
 
 file_path = "data/prog.xlsx"
-# dataframe = read_excel_file(file_path)
-# db_df = getCleanData(prof_dataframe)
+dataframe = read_excel_file(file_path)
+db_df = getCleanData(dataframe)
 # print(db_df)
-# write_db_to_file("data/table_template.log", "data/db.log", db_df)
+write_db_to_file("data/table_template.log", "data/db_new.log", db_df)
 
-prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
-professors_data = getProfessorsData(prof_dataframe)
-write_prof_db_to_file("data/prof_table_template.log", "data/prof_db_new.log", professors_data)
+# prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
+# professors_data = getProfessorsData(prof_dataframe)
+# write_prof_db_to_file("data/prof_table_template.log", "data/prof_db_new.log", professors_data)
