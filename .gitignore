@@ -11,6 +11,7 @@ tempCodeRunnerFile.py
 data/
 
 # Distribution / packaging
+.vscode/
 .Python
 build/
 develop-eggs/
