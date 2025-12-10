@@ -104,7 +104,7 @@ class dnd_label:
         index_x = diff_x.index(min(diff_x))
         diff_y = [abs(y - posy) for y in ylimit]
         index_y = diff_y.index(min(diff_y))
-        return (index_x, index_y, self.hours, self.type)
+        return (index_x, index_y, self.type)
 
     def register_to_slot(self, posx=None, posy=None):
         # register label widget into slot_occupancy and trigger layout update
@@ -145,7 +145,7 @@ class dnd_label:
             return
         slot_occupancy[slot] = widgets
 
-        index_x, index_y, hours, typ = slot
+        index_x, index_y, typ = slot
         cell_width = self.w
         n = max(1, len(widgets))
         per_w = int(cell_width / n)
@@ -260,7 +260,7 @@ class dnd_label:
 
             # Update occupancy: unregister from old slot and register into new
             old_slot = self._slot_key
-            new_slot = (index_x, index_y, self.hours, self.type)
+            new_slot = (index_x, index_y, self.type)
             if old_slot != new_slot:
                 try:
                     self.unregister_from_slot(old_slot)
@@ -301,7 +301,7 @@ class dnd_label:
             
             # Update occupancy for lab similarly to class
             old_slot = self._slot_key
-            new_slot = (index_x, index_y, self.hours, self.type)
+            new_slot = (index_x, index_y, self.type)
             if old_slot != new_slot:
                 try:
                     self.unregister_from_slot(old_slot)
