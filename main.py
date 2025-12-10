@@ -20,7 +20,8 @@ window_bg_color = "#F0F1EF" ##< Set the background color of the window
 
 window.attributes('-fullscreen', False)
 window.configure(bg=window_bg_color) ##< Set the background color of the window
-window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
+# window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
+window.state('zoomed') ##< Maximize the window (windowed full-screen)
 
 # ensure window is mapped and layout updated, then use the window's actual size
 window.update_idletasks()
