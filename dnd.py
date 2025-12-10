@@ -116,9 +116,9 @@ class dnd_label:
         # ensure list exists and append if not present
         lst = slot_occupancy.setdefault(slot, [])
         # remove any stale or duplicate entries first
-        lst = [w for w in lst if w.winfo_exists()]
-        if self.label not in lst:
-            lst.append(self.label)
+        lst = [w for w in lst if w.winfo_exists() and w is not self.label]
+        # now add this label (ensuring no duplicates since we just removed it if present)
+        lst.append(self.label)
         slot_occupancy[slot] = lst
         self._slot_key = slot
         self._update_slot_layout(slot)
@@ -270,10 +270,13 @@ class dnd_label:
                 # directly place will be handled by _update_slot_layout
                 self.register_to_slot(self.label.winfo_x(), self.label.winfo_y())
             else:
+                # Cell hasn't moved - just reposition it properly without re-registering
                 if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
                     self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
                 else:
-                    self.label.place(x=xlimit[index_x], y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid.
+                    # Trigger layout update for the current slot to ensure proper positioning
+                    # but don't re-register (which would add duplicate entry)
+                    self._update_slot_layout(new_slot)
         
         elif self.type == "lab": ##< Check if the label is a lab
             diff_x = [abs(x - self.label.winfo_x() + self.lab_displacement) for x in xlimit] ##< Get the difference between the x position of the label and the x positions of the grid, adding the lab displacement to the x position of the label
@@ -307,7 +310,10 @@ class dnd_label:
                     pass
                 self.register_to_slot(self.label.winfo_x(), self.label.winfo_y())
             else:
+                # Cell hasn't moved - just reposition it properly without re-registering
                 if index_x < 0 or index_y < 0: ##< Check if the label is moved out of the grid
                     self.label.place(x=self.label.winfo_x(), y=self.label.winfo_y()) ##< Move the label back to the original position
                 else:
-                    self.label.place(x=xlimit[index_x]+self.lab_displacement, y=ylimit[index_y]) ##< Move the label to the closest position in the grid. The y position is set to the ylimit list, which contains the y positions of the grid. The x position is set to the xlimit list, which contains the x positions of the grid, adding the lab displacement to the x position of the label.
+                    # Trigger layout update for the current slot to ensure proper positioning
+                    # but don't re-register (which would add duplicate entry)
+                    self._update_slot_layout(new_slot)

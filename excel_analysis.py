@@ -46,16 +46,16 @@ def getCleanData(dataframe):
                     if df_fac[i][-1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
                         nivel = df_fac[i][-1] ##< Get the last character of the FAC (because extracted from title "NIVEL N") column value as the nivel
                     elif df_fac[i] == "E CONTROL":
-                        nivel = '11' ##< Set nivel to 11 if the FAC column value is "E CONTROL"
+                        nivel = '21' ##< Set nivel to 21 if the FAC column value is "E CONTROL"
                         electiva = True
                     elif df_fac[i] == "E DIGITALES":
-                        nivel = '12' ##< Set nivel to 12 if the FAC column value is "E DIGITALES"
+                        nivel = '22' ##< Set nivel to 22 if the FAC column value is "E DIGITALES"
                         electiva = True
                     elif df_fac[i] == "ELECTIVAS TELECO":
-                        nivel = '13'  ##< Set nivel to 13 if the FAC column value is "ELECTIVAS TELECO"
+                        nivel = '23'  ##< Set nivel to 23 if the FAC column value is "ELECTIVAS TELECO"
                         electiva = True
                     elif df_fac[i] == "ELECTIVAS TRANSVERSALES":
-                        nivel = '14'  ##< Set nivel to 14 if the FAC column value is "ELECTIVAS TRANSVERSALES"
+                        nivel = '24'  ##< Set nivel to 24 if the FAC column value is "ELECTIVAS TRANSVERSALES"
                         electiva = True
                     # if nivel == '9':
                     #     break

@@ -20,8 +20,8 @@ window_bg_color = "#F0F1EF" ##< Set the background color of the window
 
 window.attributes('-fullscreen', False)
 window.configure(bg=window_bg_color) ##< Set the background color of the window
-# window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
-window.state('zoomed') ##< Maximize the window (windowed full-screen)
+window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
+# window.state('zoomed') ##< Maximize the window (windowed full-screen)
 
 # ensure window is mapped and layout updated, then use the window's actual size
 window.update_idletasks()
@@ -304,6 +304,25 @@ def open_add_class_window():
     add_win.title("Add Class")
     add_win.geometry(f"{int(screen_width*0.8)}x{int(screen_height*0.7)}")
 
+    # Get all courses data for search
+    all_courses_df = retrieveDBTable(supabase_instance, "materias")
+    # Build a mapping of course code -> course name and vice versa
+    _courses_map = {}  # code -> name
+    _courses_reverse_map = {}  # name -> code
+    _courses_details_map = {}  # code -> {facultad, dependencia, materia}
+    
+    for _, row in all_courses_df.iterrows():
+        code = str(row['facultad']) + str(row['dependencia']) + str(row['materia'])
+        name = row['nombre']
+        _courses_map[code] = name
+        _courses_reverse_map[name.lower()] = code
+        _courses_details_map[code] = {
+            'facultad': str(row['facultad']),
+            'dependencia': str(row['dependencia']),
+            'materia': str(row['materia']),
+            'nombre': name
+        }
+
     # --- Form Fields ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
     name_entry.pack(pady=5)
@@ -333,17 +352,145 @@ def open_add_class_window():
     _fac_map = {"25": "Ingeniería"}
     _dep_map = {"98": "Electrónica"}    
 
+    # Suggestion listboxes for course search
+    name_suggestion_listbox = None
+    code_suggestion_listbox = None
+
     def _update_code_labels(event=None):
         f = fac_entry.get().strip()
         d = dep_entry.get().strip()
         fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
         dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
 
+    def _autofill_from_code(event=None):
+        """When code fields change, look up the course name and autofill."""
+        nonlocal code_suggestion_listbox
+        f = fac_entry.get().strip()
+        d = dep_entry.get().strip()
+        m = mat_entry.get().strip()
+        
+        # Close existing listbox if present
+        if code_suggestion_listbox:
+            code_suggestion_listbox.destroy()
+            code_suggestion_listbox = None
+        
+        # Update labels
+        _update_code_labels()
+        
+        # If we have a partial or complete code, show suggestions
+        partial_code = f + d + m
+        if partial_code:
+            matches = []
+            for code, details in _courses_details_map.items():
+                if code.startswith(partial_code):
+                    matches.append((code, details['nombre']))
+            
+            if matches:
+                # Create suggestion listbox below the code entries
+                code_suggestion_listbox = Listbox(row_code_frame, height=min(5, len(matches)), width=40)
+                code_suggestion_listbox.pack(pady=(5, 0))
+                
+                for code, name in matches[:10]:  # Limit to 10 suggestions
+                    code_suggestion_listbox.insert(END, f"{code} - {name}")
+                
+                def select_code_suggestion(event):
+                    nonlocal code_suggestion_listbox
+                    selection = code_suggestion_listbox.curselection()
+                    if selection:
+                        selected = code_suggestion_listbox.get(selection[0])
+                        code = selected.split(" - ")[0]
+                        details = _courses_details_map[code]
+                        
+                        # Autofill all fields
+                        fac_entry.delete(0, END)
+                        fac_entry.insert(0, details['facultad'])
+                        dep_entry.delete(0, END)
+                        dep_entry.insert(0, details['dependencia'])
+                        mat_entry.delete(0, END)
+                        mat_entry.insert(0, details['materia'])
+                        name_entry.delete(0, END)
+                        name_entry.insert(0, details['nombre'])
+                        
+                        _update_code_labels()
+                    if code_suggestion_listbox:
+                        code_suggestion_listbox.destroy()
+                        code_suggestion_listbox = None
+                
+                code_suggestion_listbox.bind("<<ListboxSelect>>", select_code_suggestion)
+                code_suggestion_listbox.bind("<Double-Button-1>", select_code_suggestion)
+
+    def _autofill_from_name(event=None):
+        """When name changes, look up the course code and autofill."""
+        nonlocal name_suggestion_listbox
+        search_text = name_entry.get().strip().lower()
+        
+        # Close existing listbox if present
+        if name_suggestion_listbox:
+            name_suggestion_listbox.destroy()
+            name_suggestion_listbox = None
+        
+        if not search_text:
+            return
+        
+        # Filter courses based on name search
+        matches = []
+        for name_lower, code in _courses_reverse_map.items():
+            if search_text in name_lower:
+                details = _courses_details_map[code]
+                matches.append((code, details['nombre']))
+        
+        if matches:
+            # Create suggestion listbox below name entry
+            name_suggestion_listbox = Listbox(add_win, height=min(5, len(matches)), width=50)
+            name_suggestion_listbox.pack(pady=(0, 5))
+            
+            for code, name in matches[:10]:  # Limit to 10 suggestions
+                name_suggestion_listbox.insert(END, f"{code} - {name}")
+            
+            def select_name_suggestion(event):
+                nonlocal name_suggestion_listbox
+                selection = name_suggestion_listbox.curselection()
+                if selection:
+                    selected = name_suggestion_listbox.get(selection[0])
+                    code = selected.split(" - ")[0]
+                    details = _courses_details_map[code]
+                    
+                    # Autofill all fields
+                    name_entry.delete(0, END)
+                    name_entry.insert(0, details['nombre'])
+                    fac_entry.delete(0, END)
+                    fac_entry.insert(0, details['facultad'])
+                    dep_entry.delete(0, END)
+                    dep_entry.insert(0, details['dependencia'])
+                    mat_entry.delete(0, END)
+                    mat_entry.insert(0, details['materia'])
+                    
+                    _update_code_labels()
+                if name_suggestion_listbox:
+                    name_suggestion_listbox.destroy()
+                    name_suggestion_listbox = None
+            
+            name_suggestion_listbox.bind("<<ListboxSelect>>", select_name_suggestion)
+            name_suggestion_listbox.bind("<Double-Button-1>", select_name_suggestion)
+
+    def _hide_name_suggestions(event=None):
+        nonlocal name_suggestion_listbox
+        window.after(200, lambda: name_suggestion_listbox.destroy() if name_suggestion_listbox else None)
+
+    def _hide_code_suggestions(event=None):
+        nonlocal code_suggestion_listbox
+        window.after(200, lambda: code_suggestion_listbox.destroy() if code_suggestion_listbox else None)
+
     # bind updates so label changes while typing or after leaving the field
-    fac_entry.bind("<KeyRelease>", _update_code_labels)
-    fac_entry.bind("<FocusOut>", _update_code_labels)
-    dep_entry.bind("<KeyRelease>", _update_code_labels)
-    dep_entry.bind("<FocusOut>", _update_code_labels)
+    name_entry.bind("<KeyRelease>", _autofill_from_name)
+    name_entry.bind("<FocusOut>", _hide_name_suggestions)
+    
+    fac_entry.bind("<KeyRelease>", _autofill_from_code)
+    fac_entry.bind("<FocusOut>", _hide_code_suggestions)
+    dep_entry.bind("<KeyRelease>", _autofill_from_code)
+    dep_entry.bind("<FocusOut>", _hide_code_suggestions)
+    mat_entry.bind("<KeyRelease>", _autofill_from_code)
+    mat_entry.bind("<FocusOut>", _hide_code_suggestions)
 
     # --- Labs multi-row UI ---
     labs_rows = []
