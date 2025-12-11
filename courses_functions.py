@@ -5,6 +5,8 @@ import os
 
 from supabase import create_client
 import pandas as pd
+from course import Course
+from professor import Professor
 
 ## getClassSchedule function
 # This function takes a string with the format "L1-2|M3-4|W5-6" and returns a list of days, start hours, and class duration.
@@ -77,43 +79,54 @@ def connectSQL():
         print(f"Error connecting to the database: {e}")
         return None
 
-## retrieveDBCourses function
-# This function retrieves course data from the Supabase database.
+## retrieveDBTable function
+# This function retrieves data from the Supabase database.
 # Takes:
 # - supabase: the Supabase client instance
+# - table_name: name of the table to retrieve data from
 # Returns:
-# - df: a pandas DataFrame containing the course data
+# - list of SQLModel objects (Course or Professor) if table_name is recognized
+# - pandas DataFrame otherwise (for backwards compatibility)
 def retrieveDBTable(supabase, table_name):
     # Retrieve data from the specified table
     data = supabase.table(table_name).select("*").execute()
 
-    df = pd.DataFrame(data.data)
-    return df
+    # Convert to SQLModel objects if possible
+    if table_name == "materias":
+        return [Course(**row) for row in data.data]
+    elif table_name == "profesores":
+        return [Professor(**row) for row in data.data]
+    else:
+        # Return DataFrame for unknown tables (backwards compatibility)
+        df = pd.DataFrame(data.data)
+        return df
 
 
 ## getClassesList function
-# This function takes a DataFrame and a semester level, and returns lists of classes and labs for each day of the week.
-# It processes the DataFrame to extract class information, including the name, code, professor, and group.
+# This function takes a list of Course objects and a semester level, and returns lists of classes and labs for each day of the week.
+# It processes the courses to extract class information, including the name, code, professor, and group.
 # It also creates dictionaries to map class and lab keys to their respective information.
-def getClassesList(df, semester):
-    df_semestre_1 = df[df['nivel'] == semester]
+def getClassesList(courses_list, semester):
+    # Filter courses by semester level
+    courses_semester = [course for course in courses_list if course.nivel == semester]
 
     week_days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
     classes_list = [[],[],[],[],[],[]]
     labs_list = [[],[],[],[],[],[]]
-    class_info_dict = {}  # NEW: maps 'class_2' -> info dict
-    lab_info_dict = {}    # NEW: maps 'lab_2' -> info dict
+    class_info_dict = {}  # maps key -> info dict
+    lab_info_dict = {}    # maps key -> info dict
 
-    for index, row in df_semestre_1.iterrows():
-        id = row['id']
-        horario = row['horario']
+    for course in courses_semester:
+        id = course.id
+        horario = course.horario
         days, st_hours, class_duration = getClassSchedule(horario)
-        nombre = row['nombre']
-        codigo = str(row['facultad']) + str(row['dependencia']) + str(row['materia'])
-        profesor = row['profesor']  # adjust to your column name
-        grupo = row['grupo']  # adjust to your column name
-        aula = row['aula']  # adjust to your column name
+        nombre = course.nombre
+        codigo = course.get_codigo()
+        profesor = course.profesor
+        grupo = course.grupo
+        aula = course.aula
+        
         for i in range(len(days)):
             
             key = f'{nombre}\n[{grupo}]_{st_hours[i]}_{class_duration[i]}_{aula}'
@@ -123,17 +136,18 @@ def getClassesList(df, semester):
             info = {
                 'id': [id],
                 'nombre': nombre,
-                'facultad': row['facultad'],
-                'dependencia': row['dependencia'],
-                'materia': row['materia'],
+                'facultad': course.facultad,
+                'dependencia': course.dependencia,
+                'materia': course.materia,
                 'codigo': codigo,
                 'profesor': profesor,
                 'grupo': [grupo],
-                'aula': aula
+                'aula': aula,
+                'nivel': course.nivel
                 # add more fields as needed
             }
             
-            if row['es_lab'] == False:  # If it's a class
+            if course.es_lab == False:  # If it's a class
                 if key_info in class_info_dict:
                     # If the class already exists, update the info
                     gr = class_info_dict[key_info]['grupo']
@@ -144,8 +158,6 @@ def getClassesList(df, semester):
                     ids.append(id)  # Append the new id to the existing one
                     class_info_dict[key_info]['grupo'] = gr
                     class_info_dict[key_info]['id'] = ids
-
-
 
                     idx = classes_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
                     new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
@@ -175,21 +187,18 @@ def getClassesList(df, semester):
     return classes_list, labs_list, class_info_dict, lab_info_dict
 
 def getProfessorsData(supabase):
-    dataframe = retrieveDBTable(supabase, "profesores")  # Ensure the connection is established
     """
-    This function extracts professors' data from the DataFrame and returns it as a list of dictionaries.
-    Each dictionary contains the professor's ID, name, and email.
+    This function extracts professors' data from the database and returns it as a dictionary.
+    Each entry maps the professor's ID (as string) to a dictionary containing their name and email.
     """
+    professors_list = retrieveDBTable(supabase, "profesores")  # Returns list of Professor objects
+    
     professors = {}
-    df_prof_id = dataframe["identificacion"]
-    df_prof_name = dataframe["nombre"]
-    df_prof_email = dataframe["correo"]
-
-    for i in range(len(df_prof_id)):
-        if pd.notna(df_prof_id[i]) and pd.notna(df_prof_name[i]) and pd.notna(df_prof_email[i]):
-            professors[str(int(df_prof_id[i]))] = {
-                'name': df_prof_name[i].strip(),
-                'email': df_prof_email[i].strip()
+    for prof in professors_list:
+        if prof.identificacion and prof.nombre and prof.correo:
+            professors[str(prof.identificacion)] = {
+                'name': prof.nombre.strip(),
+                'email': prof.correo.strip()
             }
 
     return professors
@@ -306,17 +315,19 @@ def delete_class_in_db(supabase, deleted_keys):
             print(f"Error deleting {id_to_delete}.")
 
 def addProfessorToDB(supabase, professor):
+    """
+    Add a Professor SQLModel object to the database.
+    Args:
+        supabase: Supabase client instance
+        professor: Professor SQLModel object
+    """
+    # Convert SQLModel object to dict, excluding None id
+    prof_dict = professor.model_dump(exclude_none=True, exclude={'id'})
+    
     response = (
         supabase
         .table("profesores")
-        .insert({
-            "nombre": professor.name,
-            "identificacion": professor.id_number,
-            "correo": professor.email,
-            "catedra": professor.cathedra,
-            "contratacion": professor.hiring,
-            "formacion": professor.education
-            })
+        .insert(prof_dict)
         .execute()
     )
     if response.count == None:

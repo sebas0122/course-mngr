@@ -1,17 +1,20 @@
-from dataclasses import dataclass
-from typing import ClassVar
+from typing import Optional, ClassVar
+from sqlmodel import Field, SQLModel
 
-@dataclass
-class Professor:
+
+class Professor(SQLModel, table=True):
     """
-    Simple Professor model with basic contact info.
+    Professor model representing the 'profesores' table in the database.
     """
-    name: str
-    id_number: int
-    email: str
-    cathedra: bool = False
-    hiring: str = "NO ESPECIFICADO"
-    education: str = "NO ESPECIFICADO"
+    __tablename__ = "profesores"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nombre: str = Field(description="Professor name")
+    identificacion: int = Field(description="ID number", unique=True)
+    correo: str = Field(description="Email address")
+    catedra: bool = Field(default=False, description="Is cathedra professor")
+    contratacion: str = Field(default="NO ESPECIFICADO", description="Hiring type")
+    formacion: str = Field(default="NO ESPECIFICADO", description="Education level")
 
     # Class-level constants for valid values
     VALID_HIRING: ClassVar[set] = {
@@ -30,36 +33,47 @@ class Professor:
         "ESPECIALIZACIÓN"
     }
 
-    def __post_init__(self):
-        # normalize inputs
-        self.name = str(self.name).strip()
-        self.id_number = int(self.id_number)
-        self.email = str(self.email).strip()
-        self.cathedra = bool(self.cathedra)
-        self.hiring = str(self.hiring).strip().upper()
-        self.education = str(self.education).strip().upper()
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **data):
+        # Normalize inputs before validation
+        if 'nombre' in data:
+            data['nombre'] = str(data['nombre']).strip()
+        if 'identificacion' in data:
+            data['identificacion'] = int(data['identificacion'])
+        if 'correo' in data:
+            data['correo'] = str(data['correo']).strip()
+        if 'catedra' in data:
+            data['catedra'] = bool(data['catedra'])
+        if 'contratacion' in data:
+            data['contratacion'] = str(data['contratacion']).strip().upper()
+        if 'formacion' in data:
+            data['formacion'] = str(data['formacion']).strip().upper()
 
         # Validate hiring
-        if self.hiring not in self.VALID_HIRING:
-            print(f"WARNING: Invalid hiring type '{self.hiring}'. Valid values are: {', '.join(sorted(self.VALID_HIRING))}")
-            self.hiring = "NO ESPECIFICADO"
+        if 'contratacion' in data and data['contratacion'] not in self.VALID_HIRING:
+            print(f"WARNING: Invalid hiring type '{data['contratacion']}'. Valid values are: {', '.join(sorted(self.VALID_HIRING))}")
+            data['contratacion'] = "NO ESPECIFICADO"
 
         # Validate education
-        if self.education not in self.VALID_EDUCATION:
-            print(f"WARNING: Invalid education level '{self.education}'. Valid values are: {', '.join(sorted(self.VALID_EDUCATION))}")
-            self.education = "NO ESPECIFICADO"
+        if 'formacion' in data and data['formacion'] not in self.VALID_EDUCATION:
+            print(f"WARNING: Invalid education level '{data['formacion']}'. Valid values are: {', '.join(sorted(self.VALID_EDUCATION))}")
+            data['formacion'] = "NO ESPECIFICADO"
+
+        super().__init__(**data)
 
     def __repr__(self) -> str:
-        return f"Professor(name={self.name!r}, id_number={self.id_number!r}, email={self.email!r}, cathedra={self.cathedra!r}, hiring={self.hiring!r}, education={self.education!r})"
+        return f"Professor(nombre={self.nombre!r}, identificacion={self.identificacion!r}, correo={self.correo!r}, catedra={self.catedra!r}, contratacion={self.contratacion!r}, formacion={self.formacion!r})"
 
 
 if __name__ == "__main__":
     prof = Professor(
-        name="Dr. John Doe",
-        id_number=123456,
-        email="johndoe@example.com",
-        cathedra=True,
-        hiring="ocasional",
-        education="doctorado"
+        nombre="Dr. John Doe",
+        identificacion=123456,
+        correo="johndoe@example.com",
+        catedra=True,
+        contratacion="ocasional",
+        formacion="doctorado"
     )
     print(prof)

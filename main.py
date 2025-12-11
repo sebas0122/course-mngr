@@ -9,7 +9,7 @@ from dnd import *
 from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db, addProfessorToDB
 
 supabase_instance = connectSQL() ##< Connect to the database
-dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
+courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
 
 ctk.set_appearance_mode("Light") ##< Set the appearance mode to light
 ctk.set_default_color_theme("dark-blue")
@@ -214,7 +214,7 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
 
     return labels_ids ##< Return the list of labels ids
 
-c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
+c, l, c_info, l_info = getClassesList(courses_list, 1) ##< Get the classes and labs for level 1
 p_info = getProfessorsData(supabase_instance)
 lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info) ##< Call the function to add classes and labs to the schedule
 
@@ -228,7 +228,7 @@ def change_level():
     colors_idx = 0 ##< Reset the index for the colors
     class_colors_dict = {} ##< Reset the dictionary for the class colors
 
-    dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
+    courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
 
     # Destroy all dnd_labels
     for widget in window.winfo_children():
@@ -241,33 +241,33 @@ def change_level():
 
     # Add classes and labs to the schedule based on the selected level
     if opt.get() == "Nivel 1":
-        c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(courses_list, 1) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Nivel 2":
-        c, l, c_info, l_info = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(courses_list, 2) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Nivel 3":
-        c, l, c_info, l_info = getClassesList(dataframe, 3)
+        c, l, c_info, l_info = getClassesList(courses_list, 3)
     elif opt.get() == "Nivel 4":
-        c, l, c_info, l_info = getClassesList(dataframe, 4)
+        c, l, c_info, l_info = getClassesList(courses_list, 4)
     elif opt.get() == "Nivel 5":
-        c, l, c_info, l_info = getClassesList(dataframe, 5)
+        c, l, c_info, l_info = getClassesList(courses_list, 5)
     elif opt.get() == "Nivel 6":
-        c, l, c_info, l_info = getClassesList(dataframe, 6)
+        c, l, c_info, l_info = getClassesList(courses_list, 6)
     elif opt.get() == "Nivel 7":
-        c, l, c_info, l_info = getClassesList(dataframe, 7)
+        c, l, c_info, l_info = getClassesList(courses_list, 7)
     elif opt.get() == "Nivel 8":
-        c, l, c_info, l_info = getClassesList(dataframe, 8)
+        c, l, c_info, l_info = getClassesList(courses_list, 8)
     elif opt.get() == "Nivel 9":
-        c, l, c_info, l_info = getClassesList(dataframe, 9)
+        c, l, c_info, l_info = getClassesList(courses_list, 9)
     elif opt.get() == "Nivel 10":
-        c, l, c_info, l_info = getClassesList(dataframe, 10)
+        c, l, c_info, l_info = getClassesList(courses_list, 10)
     elif opt.get() == "E. Control":
-        c, l, c_info, l_info = getClassesList(dataframe, 11)
+        c, l, c_info, l_info = getClassesList(courses_list, 11)
     elif opt.get() == "E. Digitales":
-        c, l, c_info, l_info = getClassesList(dataframe, 12)
+        c, l, c_info, l_info = getClassesList(courses_list, 12)
     elif opt.get() == "E. Telecom":
-        c, l, c_info, l_info = getClassesList(dataframe, 13)
+        c, l, c_info, l_info = getClassesList(courses_list, 13)
     elif opt.get() == "E. Transversales":
-        c, l, c_info, l_info = getClassesList(dataframe, 14)
+        c, l, c_info, l_info = getClassesList(courses_list, 14)
     p_info = getProfessorsData(supabase_instance)
     lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info)
 
@@ -305,21 +305,21 @@ def open_add_class_window():
     add_win.geometry(f"{int(screen_width*0.8)}x{int(screen_height*0.7)}")
 
     # Get all courses data for search
-    all_courses_df = retrieveDBTable(supabase_instance, "materias")
+    all_courses_list = retrieveDBTable(supabase_instance, "materias")
     # Build a mapping of course code -> course name and vice versa
     _courses_map = {}  # code -> name
     _courses_reverse_map = {}  # name -> code
     _courses_details_map = {}  # code -> {facultad, dependencia, materia}
     
-    for _, row in all_courses_df.iterrows():
-        code = str(row['facultad']) + str(row['dependencia']) + str(row['materia'])
-        name = row['nombre']
+    for course in all_courses_list:
+        code = course.get_codigo()
+        name = course.nombre
         _courses_map[code] = name
         _courses_reverse_map[name.lower()] = code
         _courses_details_map[code] = {
-            'facultad': str(row['facultad']),
-            'dependencia': str(row['dependencia']),
-            'materia': str(row['materia']),
+            'facultad': str(course.facultad),
+            'dependencia': str(course.dependencia),
+            'materia': str(course.materia),
             'nombre': name
         }
 
