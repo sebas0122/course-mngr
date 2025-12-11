@@ -94,13 +94,13 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
-                                        getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i]}', profs_id, str(df_aula[i])])
+                                        0, 0, electiva, es_dpt,
+                                        str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
                         # Append the course lab information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
-                                        int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), getHoursLong(df_hora[i]),
+                                        int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), 0,
                                         getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i+1]}', lab_prof_id, str(df_aula[i+1])])
+                                        str(df_hora[i+1]) if pd.notna(df_hora[i+1]) else 'L6-9', lab_prof_id, str(df_aula[i+1]) if pd.notna(df_aula[i+1]) else 0])
                     else: ##< If the next value in the FAC column is not a float, indicating a theory course
                         courses.append([
                             str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
@@ -109,7 +109,7 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T', False, int(nivel), getHoursLong(df_hora[i]),
-                                        0, 0, electiva, es_dpt, f'{df_hora[i]}', profs_id, str(df_aula[i])])
+                                        0, 0, electiva, es_dpt, str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
     print(for_db)
     return for_db
 
@@ -163,7 +163,7 @@ def write_db_to_file(template_file, out_db_file, data):
         file.write("\n\n") ##< Add a new line after the template content
         for cl in data: ##< Iterate over the data
             file.write("insert into " + table_name + " " + column_tuple + " values (") ##< Write the insert statement with the table name and column names
-            for item in cl: ##< Iterate over the items in the data
+            for idx, item in enumerate(cl): ##< Iterate over the items in the data with index
 
                 # Convert the item to a representation based on SQL format
                 if isinstance(item, str):
@@ -177,8 +177,8 @@ def write_db_to_file(template_file, out_db_file, data):
                 else:
                     item_write = str(item)
                 
-                # Check if it's the last item in the list
-                if item == cl[-1]:
+                # Check if it's the last item in the list by index
+                if idx == len(cl) - 1:
                     file.write(f"{item_write}")
                 else:
                     file.write(f"{item_write}, ")

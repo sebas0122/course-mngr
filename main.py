@@ -1027,26 +1027,108 @@ delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 def export_to_excel():
     """Export the current database to an Excel file."""
     try:
-        # Retrieve all data from the database
-        dataframe = retrieveDBTable(supabase_instance, "materias")
+        import pandas as pd
         
-        if dataframe is None or dataframe.empty:
+        # Retrieve all data from the database as Course objects
+        courses_list = retrieveDBTable(supabase_instance, "materias")
+        
+        if not courses_list:
             print("No data to export")
             return
+        
+        # Retrieve all professors data
+        professors_list = retrieveDBTable(supabase_instance, "profesores")
+        
+        # Create a mapping of identificacion -> Professor object for quick lookup
+        professors_map = {prof.identificacion: prof for prof in professors_list}
+        
+        # Process each course and format data according to requirements
+        excel_data = []
+        for course in courses_list:
+            # Process professor IDs list - convert to "|" separated string
+            cedulas = "|".join(str(pid) for pid in course.profesor) if course.profesor else ""
+            
+            # Look up professor names from the profesor list
+            profesor_names = []
+            catedra_status = []
+            for prof_id in course.profesor:
+                prof = professors_map.get(prof_id)
+                if prof:
+                    profesor_names.append(prof.nombre)
+                    catedra_status.append("SI" if prof.catedra else "NO")
+                else:
+                    profesor_names.append(f"ID:{prof_id}")
+                    catedra_status.append("NO")
+            
+            profesor_str = "|".join(profesor_names)
+            catedra_str = "|".join(catedra_status)
+            
+            # Determine which hours field to use (first non-zero value)
+            horas = 0
+            if course.horas_teoricas != 0:
+                horas = course.horas_teoricas
+            elif course.horas_practicas != 0:
+                horas = course.horas_practicas
+            elif course.horas_tp != 0:
+                horas = course.horas_tp
+            
+            # Get cupo value - check if it exists in the model, otherwise set to empty or 0
+            cupo = getattr(course, 'cupo', 0)
+            
+            # Create row for Excel with proper column order
+            row = {
+                'Nivel': course.nivel,
+                'Facultad': course.facultad,
+                'Dependencia': course.dependencia,
+                'Materia': course.materia,
+                'Nombre': course.nombre,
+                'Grupo': course.grupo,
+                'Cupo': cupo,
+                'Aula': course.aula,
+                'Horario': course.horario,
+                'Cédula': cedulas,
+                'Profesor': profesor_str,
+                'Cátedra': catedra_str,
+                'Horas': horas
+            }
+            excel_data.append(row)
+        
+        # Create DataFrame with proper column order
+        columns_order = ['Nivel', 'Facultad', 'Dependencia', 'Materia', 'Nombre', 
+                        'Grupo', 'Cupo', 'Aula', 'Horario', 'Cédula', 
+                        'Profesor', 'Cátedra', 'Horas']
+        dataframe = pd.DataFrame(excel_data, columns=columns_order)
+        
+        # Add a temporary column for sorting by course code
+        dataframe['_codigo_sort'] = dataframe['Facultad'].astype(str) + \
+                                     dataframe['Dependencia'].astype(str) + \
+                                     dataframe['Materia'].astype(str)
+        
+        # Sort: first by Nivel (ascending), then by course code to keep same courses together
+        dataframe = dataframe.sort_values(by=['Nivel', '_codigo_sort', 'Grupo'], ascending=[True, True, True])
+
+        # Remove the temporary sorting column
+        dataframe = dataframe.drop(columns=['_codigo_sort'])
+        
+        # Reset index after sorting
+        dataframe = dataframe.reset_index(drop=True)
         
         # Open file dialog to choose save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-            initialfile=f"materias_{opt.get().replace(' ', '_')}.xlsx"
+            initialfile="Archivo_Materias_Exportado.xlsx"
         )
         
         if file_path:
             # Export to Excel
             dataframe.to_excel(file_path, index=False, sheet_name="Materias")
             print(f"Data exported successfully to {file_path}")
+            print(f"Exported {len(excel_data)} courses")
     except Exception as e:
         print(f"Error exporting to Excel: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Add the Export button after the delete button
 export_button = ctk.CTkButton(window,
