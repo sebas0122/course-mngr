@@ -45,8 +45,20 @@ def getCleanData(dataframe):
                 if type(df_fac[i]) == str: ##< Check if the value in the FAC column is a string
                     if df_fac[i][-1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
                         nivel = df_fac[i][-1] ##< Get the last character of the FAC (because extracted from title "NIVEL N") column value as the nivel
-                        # if nivel == '9':
-                        #     break
+                    elif df_fac[i] == "E CONTROL":
+                        nivel = '21' ##< Set nivel to 21 if the FAC column value is "E CONTROL"
+                        electiva = True
+                    elif df_fac[i] == "E DIGITALES":
+                        nivel = '22' ##< Set nivel to 22 if the FAC column value is "E DIGITALES"
+                        electiva = True
+                    elif df_fac[i] == "ELECTIVAS TELECO":
+                        nivel = '23'  ##< Set nivel to 23 if the FAC column value is "ELECTIVAS TELECO"
+                        electiva = True
+                    elif df_fac[i] == "ELECTIVAS TRANSVERSALES":
+                        nivel = '24'  ##< Set nivel to 24 if the FAC column value is "ELECTIVAS TRANSVERSALES"
+                        electiva = True
+                    # if nivel == '9':
+                    #     break
                     else:
                         nivel = 0 ##< Set nivel to 0 if the last character is not a number
                         electiva = True ##< Set electiva to True if the last character is not a number
@@ -57,8 +69,8 @@ def getCleanData(dataframe):
                         continue ##< Skip the iteration if the value in the CUPO column is 0, means the course is not available
                     materia_limpia = df_materia[i].replace('\n', '') ##< Clean the MATERIA column value by removing new line characters
                     print(materia_limpia)
-                    if materia_limpia == 'PROG DISPOSITIVOS MÓVIL':
-                        break
+                    # if materia_limpia == 'PROG DISPOSITIVOS MÓVIL':
+                    #     break
                     # if 'É' in materia_limpia: ##< Check if the MATERIA column value contains "É"
                     #     materia_limpia = materia_limpia.replace('É', 'E') ##< Replace "É" with "E"
                     if int(df_dep[i]) == 47 or int(df_dep[i]) == 98: ##< Check if the value in the DEP column is 47 or 98, indicating a specific department
@@ -82,13 +94,13 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
-                                        getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i]}', profs_id, str(df_aula[i])])
+                                        0, 0, electiva, es_dpt,
+                                        str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
                         # Append the course lab information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
-                                        int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), getHoursLong(df_hora[i]),
+                                        int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), 0,
                                         getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        f'{df_hora[i+1]}', lab_prof_id, str(df_aula[i+1])])
+                                        str(df_hora[i+1]) if pd.notna(df_hora[i+1]) else 'L6-9', lab_prof_id, str(df_aula[i+1]) if pd.notna(df_aula[i+1]) else 0])
                     else: ##< If the next value in the FAC column is not a float, indicating a theory course
                         courses.append([
                             str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
@@ -97,7 +109,7 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T', False, int(nivel), getHoursLong(df_hora[i]),
-                                        0, 0, electiva, es_dpt, f'{df_hora[i]}', profs_id, str(df_aula[i])])
+                                        0, 0, electiva, es_dpt, str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
     print(for_db)
     return for_db
 
@@ -151,7 +163,7 @@ def write_db_to_file(template_file, out_db_file, data):
         file.write("\n\n") ##< Add a new line after the template content
         for cl in data: ##< Iterate over the data
             file.write("insert into " + table_name + " " + column_tuple + " values (") ##< Write the insert statement with the table name and column names
-            for item in cl: ##< Iterate over the items in the data
+            for idx, item in enumerate(cl): ##< Iterate over the items in the data with index
 
                 # Convert the item to a representation based on SQL format
                 if isinstance(item, str):
@@ -165,8 +177,8 @@ def write_db_to_file(template_file, out_db_file, data):
                 else:
                     item_write = str(item)
                 
-                # Check if it's the last item in the list
-                if item == cl[-1]:
+                # Check if it's the last item in the list by index
+                if idx == len(cl) - 1:
                     file.write(f"{item_write}")
                 else:
                     file.write(f"{item_write}, ")
@@ -213,11 +225,11 @@ def write_prof_db_to_file(template_file, out_db_file, data):
             file.write(f"{prof[0]}, '{prof[1]}', '{prof[2]}', {prof[3]}, '{prof[4]}', '{prof[5]}');\n")
 
 file_path = "data/prog.xlsx"
-# dataframe = read_excel_file(file_path)
-# db_df = getCleanData(prof_dataframe)
+dataframe = read_excel_file(file_path)
+db_df = getCleanData(dataframe)
 # print(db_df)
-# write_db_to_file("data/table_template.log", "data/db.log", db_df)
+write_db_to_file("data/table_template.log", "data/db_new.log", db_df)
 
-prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
-professors_data = getProfessorsData(prof_dataframe)
-write_prof_db_to_file("data/prof_table_template.log", "data/prof_db_new.log", professors_data)
+# prof_dataframe = read_excel_file(file_path, sheet_name="DATOS_PROFESORES")
+# professors_data = getProfessorsData(prof_dataframe)
+# write_prof_db_to_file("data/prof_table_template.log", "data/prof_db_new.log", professors_data)

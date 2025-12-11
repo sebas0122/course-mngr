@@ -9,7 +9,7 @@ from dnd import *
 from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db, addProfessorToDB
 
 supabase_instance = connectSQL() ##< Connect to the database
-dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
+courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
 
 ctk.set_appearance_mode("Light") ##< Set the appearance mode to light
 ctk.set_default_color_theme("dark-blue")
@@ -20,7 +20,8 @@ window_bg_color = "#F0F1EF" ##< Set the background color of the window
 
 window.attributes('-fullscreen', False)
 window.configure(bg=window_bg_color) ##< Set the background color of the window
-window.state('zoomed')  ##< Maximize the window (windowed full-screen)
+window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
+# window.state('zoomed') ##< Maximize the window (windowed full-screen)
 
 # ensure window is mapped and layout updated, then use the window's actual size
 window.update_idletasks()
@@ -213,7 +214,7 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
 
     return labels_ids ##< Return the list of labels ids
 
-c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Get the classes and labs for level 1
+c, l, c_info, l_info = getClassesList(courses_list, 1) ##< Get the classes and labs for level 1
 p_info = getProfessorsData(supabase_instance)
 lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info) ##< Call the function to add classes and labs to the schedule
 
@@ -227,7 +228,7 @@ def change_level():
     colors_idx = 0 ##< Reset the index for the colors
     class_colors_dict = {} ##< Reset the dictionary for the class colors
 
-    dataframe = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data
+    courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
 
     # Destroy all dnd_labels
     for widget in window.winfo_children():
@@ -240,28 +241,38 @@ def change_level():
 
     # Add classes and labs to the schedule based on the selected level
     if opt.get() == "Nivel 1":
-        c, l, c_info, l_info = getClassesList(dataframe, 1) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(courses_list, 1) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Nivel 2":
-        c, l, c_info, l_info = getClassesList(dataframe, 2) ##< Call the function to add classes and labs to the schedule
+        c, l, c_info, l_info = getClassesList(courses_list, 2) ##< Call the function to add classes and labs to the schedule
     elif opt.get() == "Nivel 3":
-        c, l, c_info, l_info = getClassesList(dataframe, 3)
+        c, l, c_info, l_info = getClassesList(courses_list, 3)
     elif opt.get() == "Nivel 4":
-        c, l, c_info, l_info = getClassesList(dataframe, 4)
+        c, l, c_info, l_info = getClassesList(courses_list, 4)
     elif opt.get() == "Nivel 5":
-        c, l, c_info, l_info = getClassesList(dataframe, 5)
+        c, l, c_info, l_info = getClassesList(courses_list, 5)
     elif opt.get() == "Nivel 6":
-        c, l, c_info, l_info = getClassesList(dataframe, 6)
+        c, l, c_info, l_info = getClassesList(courses_list, 6)
     elif opt.get() == "Nivel 7":
-        c, l, c_info, l_info = getClassesList(dataframe, 7)
+        c, l, c_info, l_info = getClassesList(courses_list, 7)
     elif opt.get() == "Nivel 8":
-        c, l, c_info, l_info = getClassesList(dataframe, 8)
+        c, l, c_info, l_info = getClassesList(courses_list, 8)
     elif opt.get() == "Nivel 9":
-        c, l, c_info, l_info = getClassesList(dataframe, 9)
+        c, l, c_info, l_info = getClassesList(courses_list, 9)
+    elif opt.get() == "Nivel 10":
+        c, l, c_info, l_info = getClassesList(courses_list, 10)
+    elif opt.get() == "E. Control":
+        c, l, c_info, l_info = getClassesList(courses_list, 11)
+    elif opt.get() == "E. Digitales":
+        c, l, c_info, l_info = getClassesList(courses_list, 12)
+    elif opt.get() == "E. Telecom":
+        c, l, c_info, l_info = getClassesList(courses_list, 13)
+    elif opt.get() == "E. Transversales":
+        c, l, c_info, l_info = getClassesList(courses_list, 14)
     p_info = getProfessorsData(supabase_instance)
     lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info)
 
 # Dropdown options
-level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9"] 
+level = ["Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Nivel 5", "Nivel 6", "Nivel 7", "Nivel 8", "Nivel 9", "E. Control", "E. Digitales", "E. Telecom", "E. Transversales"] 
 
 # Selected option variable  
 opt = StringVar(value="Nivel 1")
@@ -293,6 +304,25 @@ def open_add_class_window():
     add_win.title("Add Class")
     add_win.geometry(f"{int(screen_width*0.8)}x{int(screen_height*0.7)}")
 
+    # Get all courses data for search
+    all_courses_list = retrieveDBTable(supabase_instance, "materias")
+    # Build a mapping of course code -> course name and vice versa
+    _courses_map = {}  # code -> name
+    _courses_reverse_map = {}  # name -> code
+    _courses_details_map = {}  # code -> {facultad, dependencia, materia}
+    
+    for course in all_courses_list:
+        code = course.get_codigo()
+        name = course.nombre
+        _courses_map[code] = name
+        _courses_reverse_map[name.lower()] = code
+        _courses_details_map[code] = {
+            'facultad': str(course.facultad),
+            'dependencia': str(course.dependencia),
+            'materia': str(course.materia),
+            'nombre': name
+        }
+
     # --- Form Fields ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
     name_entry.pack(pady=5)
@@ -322,17 +352,145 @@ def open_add_class_window():
     _fac_map = {"25": "Ingeniería"}
     _dep_map = {"98": "Electrónica"}    
 
+    # Suggestion listboxes for course search
+    name_suggestion_listbox = None
+    code_suggestion_listbox = None
+
     def _update_code_labels(event=None):
         f = fac_entry.get().strip()
         d = dep_entry.get().strip()
         fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
         dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
 
+    def _autofill_from_code(event=None):
+        """When code fields change, look up the course name and autofill."""
+        nonlocal code_suggestion_listbox
+        f = fac_entry.get().strip()
+        d = dep_entry.get().strip()
+        m = mat_entry.get().strip()
+        
+        # Close existing listbox if present
+        if code_suggestion_listbox:
+            code_suggestion_listbox.destroy()
+            code_suggestion_listbox = None
+        
+        # Update labels
+        _update_code_labels()
+        
+        # If we have a partial or complete code, show suggestions
+        partial_code = f + d + m
+        if partial_code:
+            matches = []
+            for code, details in _courses_details_map.items():
+                if code.startswith(partial_code):
+                    matches.append((code, details['nombre']))
+            
+            if matches:
+                # Create suggestion listbox below the code entries
+                code_suggestion_listbox = Listbox(row_code_frame, height=min(5, len(matches)), width=40)
+                code_suggestion_listbox.pack(pady=(5, 0))
+                
+                for code, name in matches[:10]:  # Limit to 10 suggestions
+                    code_suggestion_listbox.insert(END, f"{code} - {name}")
+                
+                def select_code_suggestion(event):
+                    nonlocal code_suggestion_listbox
+                    selection = code_suggestion_listbox.curselection()
+                    if selection:
+                        selected = code_suggestion_listbox.get(selection[0])
+                        code = selected.split(" - ")[0]
+                        details = _courses_details_map[code]
+                        
+                        # Autofill all fields
+                        fac_entry.delete(0, END)
+                        fac_entry.insert(0, details['facultad'])
+                        dep_entry.delete(0, END)
+                        dep_entry.insert(0, details['dependencia'])
+                        mat_entry.delete(0, END)
+                        mat_entry.insert(0, details['materia'])
+                        name_entry.delete(0, END)
+                        name_entry.insert(0, details['nombre'])
+                        
+                        _update_code_labels()
+                    if code_suggestion_listbox:
+                        code_suggestion_listbox.destroy()
+                        code_suggestion_listbox = None
+                
+                code_suggestion_listbox.bind("<<ListboxSelect>>", select_code_suggestion)
+                code_suggestion_listbox.bind("<Double-Button-1>", select_code_suggestion)
+
+    def _autofill_from_name(event=None):
+        """When name changes, look up the course code and autofill."""
+        nonlocal name_suggestion_listbox
+        search_text = name_entry.get().strip().lower()
+        
+        # Close existing listbox if present
+        if name_suggestion_listbox:
+            name_suggestion_listbox.destroy()
+            name_suggestion_listbox = None
+        
+        if not search_text:
+            return
+        
+        # Filter courses based on name search
+        matches = []
+        for name_lower, code in _courses_reverse_map.items():
+            if search_text in name_lower:
+                details = _courses_details_map[code]
+                matches.append((code, details['nombre']))
+        
+        if matches:
+            # Create suggestion listbox below name entry
+            name_suggestion_listbox = Listbox(add_win, height=min(5, len(matches)), width=50)
+            name_suggestion_listbox.pack(pady=(0, 5))
+            
+            for code, name in matches[:10]:  # Limit to 10 suggestions
+                name_suggestion_listbox.insert(END, f"{code} - {name}")
+            
+            def select_name_suggestion(event):
+                nonlocal name_suggestion_listbox
+                selection = name_suggestion_listbox.curselection()
+                if selection:
+                    selected = name_suggestion_listbox.get(selection[0])
+                    code = selected.split(" - ")[0]
+                    details = _courses_details_map[code]
+                    
+                    # Autofill all fields
+                    name_entry.delete(0, END)
+                    name_entry.insert(0, details['nombre'])
+                    fac_entry.delete(0, END)
+                    fac_entry.insert(0, details['facultad'])
+                    dep_entry.delete(0, END)
+                    dep_entry.insert(0, details['dependencia'])
+                    mat_entry.delete(0, END)
+                    mat_entry.insert(0, details['materia'])
+                    
+                    _update_code_labels()
+                if name_suggestion_listbox:
+                    name_suggestion_listbox.destroy()
+                    name_suggestion_listbox = None
+            
+            name_suggestion_listbox.bind("<<ListboxSelect>>", select_name_suggestion)
+            name_suggestion_listbox.bind("<Double-Button-1>", select_name_suggestion)
+
+    def _hide_name_suggestions(event=None):
+        nonlocal name_suggestion_listbox
+        window.after(200, lambda: name_suggestion_listbox.destroy() if name_suggestion_listbox else None)
+
+    def _hide_code_suggestions(event=None):
+        nonlocal code_suggestion_listbox
+        window.after(200, lambda: code_suggestion_listbox.destroy() if code_suggestion_listbox else None)
+
     # bind updates so label changes while typing or after leaving the field
-    fac_entry.bind("<KeyRelease>", _update_code_labels)
-    fac_entry.bind("<FocusOut>", _update_code_labels)
-    dep_entry.bind("<KeyRelease>", _update_code_labels)
-    dep_entry.bind("<FocusOut>", _update_code_labels)
+    name_entry.bind("<KeyRelease>", _autofill_from_name)
+    name_entry.bind("<FocusOut>", _hide_name_suggestions)
+    
+    fac_entry.bind("<KeyRelease>", _autofill_from_code)
+    fac_entry.bind("<FocusOut>", _hide_code_suggestions)
+    dep_entry.bind("<KeyRelease>", _autofill_from_code)
+    dep_entry.bind("<FocusOut>", _hide_code_suggestions)
+    mat_entry.bind("<KeyRelease>", _autofill_from_code)
+    mat_entry.bind("<FocusOut>", _hide_code_suggestions)
 
     # --- Labs multi-row UI ---
     labs_rows = []
@@ -869,26 +1027,108 @@ delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 def export_to_excel():
     """Export the current database to an Excel file."""
     try:
-        # Retrieve all data from the database
-        dataframe = retrieveDBTable(supabase_instance, "materias")
+        import pandas as pd
         
-        if dataframe is None or dataframe.empty:
+        # Retrieve all data from the database as Course objects
+        courses_list = retrieveDBTable(supabase_instance, "materias")
+        
+        if not courses_list:
             print("No data to export")
             return
+        
+        # Retrieve all professors data
+        professors_list = retrieveDBTable(supabase_instance, "profesores")
+        
+        # Create a mapping of identificacion -> Professor object for quick lookup
+        professors_map = {prof.identificacion: prof for prof in professors_list}
+        
+        # Process each course and format data according to requirements
+        excel_data = []
+        for course in courses_list:
+            # Process professor IDs list - convert to "|" separated string
+            cedulas = "|".join(str(pid) for pid in course.profesor) if course.profesor else ""
+            
+            # Look up professor names from the profesor list
+            profesor_names = []
+            catedra_status = []
+            for prof_id in course.profesor:
+                prof = professors_map.get(prof_id)
+                if prof:
+                    profesor_names.append(prof.nombre)
+                    catedra_status.append("SI" if prof.catedra else "NO")
+                else:
+                    profesor_names.append(f"ID:{prof_id}")
+                    catedra_status.append("NO")
+            
+            profesor_str = "|".join(profesor_names)
+            catedra_str = "|".join(catedra_status)
+            
+            # Determine which hours field to use (first non-zero value)
+            horas = 0
+            if course.horas_teoricas != 0:
+                horas = course.horas_teoricas
+            elif course.horas_practicas != 0:
+                horas = course.horas_practicas
+            elif course.horas_tp != 0:
+                horas = course.horas_tp
+            
+            # Get cupo value - check if it exists in the model, otherwise set to empty or 0
+            cupo = getattr(course, 'cupo', 0)
+            
+            # Create row for Excel with proper column order
+            row = {
+                'Nivel': course.nivel,
+                'Facultad': course.facultad,
+                'Dependencia': course.dependencia,
+                'Materia': course.materia,
+                'Nombre': course.nombre,
+                'Grupo': course.grupo,
+                'Cupo': cupo,
+                'Aula': course.aula,
+                'Horario': course.horario,
+                'Cédula': cedulas,
+                'Profesor': profesor_str,
+                'Cátedra': catedra_str,
+                'Horas': horas
+            }
+            excel_data.append(row)
+        
+        # Create DataFrame with proper column order
+        columns_order = ['Nivel', 'Facultad', 'Dependencia', 'Materia', 'Nombre', 
+                        'Grupo', 'Cupo', 'Aula', 'Horario', 'Cédula', 
+                        'Profesor', 'Cátedra', 'Horas']
+        dataframe = pd.DataFrame(excel_data, columns=columns_order)
+        
+        # Add a temporary column for sorting by course code
+        dataframe['_codigo_sort'] = dataframe['Facultad'].astype(str) + \
+                                     dataframe['Dependencia'].astype(str) + \
+                                     dataframe['Materia'].astype(str)
+        
+        # Sort: first by Nivel (ascending), then by course code to keep same courses together
+        dataframe = dataframe.sort_values(by=['Nivel', '_codigo_sort', 'Grupo'], ascending=[True, True, True])
+
+        # Remove the temporary sorting column
+        dataframe = dataframe.drop(columns=['_codigo_sort'])
+        
+        # Reset index after sorting
+        dataframe = dataframe.reset_index(drop=True)
         
         # Open file dialog to choose save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-            initialfile=f"materias_{opt.get().replace(' ', '_')}.xlsx"
+            initialfile="Archivo_Materias_Exportado.xlsx"
         )
         
         if file_path:
             # Export to Excel
             dataframe.to_excel(file_path, index=False, sheet_name="Materias")
             print(f"Data exported successfully to {file_path}")
+            print(f"Exported {len(excel_data)} courses")
     except Exception as e:
         print(f"Error exporting to Excel: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Add the Export button after the delete button
 export_button = ctk.CTkButton(window,
