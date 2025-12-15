@@ -1,3 +1,15 @@
+##
+# @file courses_functions.py
+# @brief Database and course management utility functions
+#
+# This module provides core functionality for interacting with the Supabase database,
+# parsing course schedules, and managing course data. It includes functions for
+# connecting to the database, retrieving and processing course information, updating
+# schedules, and managing professors.
+#
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -8,15 +20,23 @@ import pandas as pd
 from course import Course
 from professor import Professor
 
-## getClassSchedule function
-# This function takes a string with the format "L1-2|M3-4|W5-6" and returns a list of days, start hours, and class duration.
-# It splits the string by "|" and then processes each part to extract the day, start hour, and duration.
-# It takes the following parameter:
-# - days_hours_string: a string with the format "L1-2|M3-4|W5-6"
-# Returns:
-# - days: a list of days in Spanish (Lunes, Martes, etc.)
-# - start_hours: a list of start hours for each class
-# - class_duration: a list of class durations for each class
+##
+# @brief Parse schedule string into days, start hours, and durations
+#
+# This function takes a schedule string in format "L1-2|M3-4|W5-6" where L/M/W/J/V/S/D
+# represent days of the week (Spanish) and numbers represent hours. It splits the string
+# and extracts schedule information for each class session.
+#
+# Format examples:
+# - "L16-18" = Monday from 16:00 to 18:00 (2 hours)
+# - "LM8-10" = Monday and Tuesday from 8:00 to 10:00 (2 hours each)
+# - "L16-18|M8-10" = Monday 16-18 and Tuesday 8-10
+#
+# @param days_hours_string Schedule string with format "L1-2|M3-4|W5-6"
+# @return Tuple containing:
+#         - days: List of day names in Spanish (Lunes, Martes, etc.)
+#         - start_hours: List of start hours for each class
+#         - class_duration: List of class durations in hours for each class
 def getClassSchedule(days_hours_string):
     days_dict = {"L": "Lunes", "M": "Martes", "W": "Miércoles", "J": "Jueves", "V": "Viernes", "S": "Sábado", "D": "Domingo"} ##< Dictionary to map letters to days in Spanish
     days_hours_string = days_hours_string.replace(" ", "") ##< Remove spaces from the string
@@ -40,14 +60,15 @@ def getClassSchedule(days_hours_string):
 
     return days, start_hours, class_duration
 
-## getHoursLong function
-# This function takes a string with the format "L1-2|M3-4|W5-6" and returns the total number of hours for all classes.
-# It checks if the string contains "|" and processes it accordingly.
-# It takes the following parameter:
-# - days_hours_string: a string with the format "L1-2|M3-4|W5-6"
-# Returns:
-# - total_hours: an integer representing the total number of hours for all classes
-# If the string is not in the expected format, it returns 0.
+##
+# @brief Calculate total hours from a schedule string
+#
+# This function processes a schedule string and returns the total number of hours
+# for all class sessions. It handles both single entries ("L16-18") and multiple
+# entries separated by pipes ("L16-18|M8-10").
+#
+# @param days_hours_string Schedule string with format "L1-2|M3-4|W5-6"
+# @return Integer representing total number of hours, or 0 if parsing fails
 def getHoursLong(days_hours_string):
     try:
         if "|" in days_hours_string: ##< Check if the string contains "|"
@@ -63,10 +84,14 @@ def getHoursLong(days_hours_string):
     except:
         return 0 ##< Return 0 if there is an error in processing the string
 
-## connectSQL function
-# This function connects to the Supabase database.
-# Returns:
-# - supabase: the Supabase client instance
+##
+# @brief Establish connection to Supabase database
+#
+# This function creates and returns a Supabase client instance using credentials
+# from environment variables (SUPABASE_URL and SUPABASE_KEY). The .env file must
+# be present in the project root with these variables defined.
+#
+# @return Supabase client instance if successful, None if connection fails
 def connectSQL():
     try:
         # Connect to the Supabase database
@@ -79,14 +104,17 @@ def connectSQL():
         print(f"Error connecting to the database: {e}")
         return None
 
-## retrieveDBTable function
-# This function retrieves data from the Supabase database.
-# Takes:
-# - supabase: the Supabase client instance
-# - table_name: name of the table to retrieve data from
-# Returns:
-# - list of SQLModel objects (Course or Professor) if table_name is recognized
-# - pandas DataFrame otherwise (for backwards compatibility)
+##
+# @brief Retrieve and convert database table data to objects
+#
+# This function retrieves all records from a specified Supabase table and converts
+# them to appropriate SQLModel objects (Course or Professor) if recognized, or returns
+# a pandas DataFrame for backwards compatibility with unknown tables.
+#
+# @param supabase Supabase client instance
+# @param table_name Name of the table to retrieve ("materias" or "profesores")
+# @return List of SQLModel objects (Course or Professor) for recognized tables,
+#         pandas DataFrame for other tables
 def retrieveDBTable(supabase, table_name):
     # Retrieve data from the specified table
     data = supabase.table(table_name).select("*").execute()
@@ -102,10 +130,21 @@ def retrieveDBTable(supabase, table_name):
         return df
 
 
-## getClassesList function
-# This function takes a list of Course objects and a semester level, and returns lists of classes and labs for each day of the week.
-# It processes the courses to extract class information, including the name, code, professor, and group.
-# It also creates dictionaries to map class and lab keys to their respective information.
+##
+# @brief Process course list and organize by schedule
+#
+# This function takes a list of Course objects, filters them by semester level,
+# and organizes them into weekly schedule grids. It creates separate lists for
+# theory classes and labs, grouped by day of the week. Courses with the same
+# schedule are grouped together with combined group numbers.
+#
+# @param courses_list List of Course SQLModel objects from database
+# @param semester Semester/level number to filter courses (1-10, or 21+ for electives)
+# @return Tuple containing:
+#         - classes_list: List of 6 lists (one per weekday) with class schedule strings
+#         - labs_list: List of 6 lists (one per weekday) with lab schedule strings
+#         - class_info_dict: Dict mapping schedule keys to class information
+#         - lab_info_dict: Dict mapping schedule keys to lab information
 def getClassesList(courses_list, semester):
     # Filter courses by semester level
     courses_semester = [course for course in courses_list if course.nivel == semester]
@@ -186,6 +225,16 @@ def getClassesList(courses_list, semester):
 
     return classes_list, labs_list, class_info_dict, lab_info_dict
 
+##
+# @brief Extract and format professor data from database
+#
+# This function retrieves professor information from the database and formats it
+# into a dictionary for easy lookup. Each entry maps a professor's identification
+# number to their name and email address.
+#
+# @param supabase Supabase client instance
+# @return Dictionary where keys are professor IDs (as strings) and values are dicts
+#         containing 'name' and 'email' keys
 def getProfessorsData(supabase):
     """
     This function extracts professors' data from the database and returns it as a dictionary.
@@ -203,7 +252,7 @@ def getProfessorsData(supabase):
 
     return professors
 
-# Mapping for weekdays
+##< Mapping dictionary from Spanish day names to single-letter codes
 DAYS_MAP = {
     "Lunes": "L",
     "Martes": "M",
@@ -213,6 +262,13 @@ DAYS_MAP = {
     "Sábado": "S"
 }
 
+##
+# @brief Parse schedule key into components
+#
+# Extracts schedule information from a key string format used internally.
+#
+# @param key Schedule key in format "COURSE_NAME_HOUR_DURATION_DAY"
+# @return Tuple of (name, hour, duration, day)
 def parse_schedule_key(key):
     # Example key: 'INFORMÁTICA I_16_2_Lunes'
     parts = key.split('_')
@@ -222,10 +278,27 @@ def parse_schedule_key(key):
     day = parts[3]
     return name, hour, duration, day
 
+##
+# @brief Format schedule slot into compact notation
+#
+# Converts day, hour, and duration into compact schedule format like "L16-18".
+#
+# @param day Day name in Spanish (Lunes, Martes, etc.)
+# @param hour Start hour (6-22)
+# @param duration Duration in hours
+# @return Formatted slot string (e.g., "L16-18")
 def format_slot(day, hour, duration):
     day_code = DAYS_MAP.get(day, '?')
     return f"{day_code}{hour}-{hour+duration}"
 
+##
+# @brief Build schedule map from schedule dictionary
+#
+# Processes a schedule information dictionary and creates a structured map
+# organizing courses by ID, name, and group with their new schedule details.
+#
+# @param schedule_dict Dictionary mapping schedule keys to course information
+# @return Dictionary mapping (id, name, group) tuples to schedule details
 def build_schedule_map(schedule_dict):
     class_map = {}
     for key, data in schedule_dict.items():
@@ -246,6 +319,18 @@ def build_schedule_map(schedule_dict):
 
     return class_map
 
+##
+# @brief Update course schedules in the database
+#
+# This function takes modified schedule information and updates the database records.
+# It processes only the courses that have been edited (tracked in c_edited list),
+# formats their schedules into the database format, and performs UPDATE or INSERT
+# operations as needed.
+#
+# @param supabase Supabase client instance
+# @param schedule_dict Dictionary mapping schedule keys to course information
+# @param c_edited List of schedule keys that have been modified
+# @param is_lab Boolean indicating whether these are lab sessions (True) or classes (False)
 def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
     print("Schedule list to update:", c_edited)
     only_edited_dict = {k: v for k, v in schedule_dict.items() if k in c_edited}
@@ -299,6 +384,15 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
         else:
             print("Error saving data.")
 
+##
+# @brief Delete courses from the database
+#
+# This function deletes course records from the database by their IDs.
+# It iterates through the list of IDs to delete and performs a DELETE operation
+# for each one.
+#
+# @param supabase Supabase client instance
+# @param deleted_keys List of course IDs to delete from database
 def delete_class_in_db(supabase, deleted_keys):
     for id_to_delete in deleted_keys:
         print(f"Deleting {id_to_delete}...")
@@ -314,6 +408,15 @@ def delete_class_in_db(supabase, deleted_keys):
         else:
             print(f"Error deleting {id_to_delete}.")
 
+##
+# @brief Add a new professor to the database
+#
+# This function inserts a new professor record into the database. It takes a
+# Professor SQLModel object, converts it to a dictionary (excluding the id field),
+# and inserts it into the profesores table.
+#
+# @param supabase Supabase client instance
+# @param professor Professor SQLModel object to insert
 def addProfessorToDB(supabase, professor):
     """
     Add a Professor SQLModel object to the database.

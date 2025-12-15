@@ -17,10 +17,10 @@
 ### 🎯 Problem Statement
 
 Previously, schedule management relied on numerous separate files, each requiring manual updates whenever changes occurred. This approach was:
-- ❌ Inefficient and time-consuming
-- ❌ Prone to inconsistencies and errors
-- ❌ Difficult to maintain and coordinate
-- ❌ Lacked a centralized source of truth
+- Inefficient and time-consuming
+- Prone to inconsistencies and errors
+- Difficult to maintain and coordinate
+- Lacked a centralized source of truth
 
 **course-mngr** solves these problems with a centralized system backed by a cloud database, ensuring all data is synchronized and accessible from a single, intuitive interface.
 
@@ -403,9 +403,14 @@ See [SQLMODEL_USAGE.md](SQLMODEL_USAGE.md) for complete API documentation.
 
 ## 📚 Documentation
 
-- [SQLModel Migration Guide](SQLMODEL_MIGRATION.md) - Details about the SQLModel architecture
-- [SQLModel Usage Guide](SQLMODEL_USAGE.md) - API reference and code examples
-- [Database Schema](docs/database-schema.md) - Complete database structure
+### For Users
+- **[Building Executable](BUILD_INSTRUCTIONS.md)** - Complete guide to create standalone .exe application
+- **[Icon Setup](ICON_SETUP.md)** - Instructions for customizing application icon
+
+### For Developers
+- **[Doxygen Documentation Guide](DOXYGEN_GUIDE.md)** - Generate code documentation
+- **[SQLModel Migration Guide](SQLMODEL_MIGRATION.md)** - Details about the SQLModel architecture
+- **[SQLModel Usage Guide](SQLMODEL_USAGE.md)** - API reference and code examples
 
 ## 🤝 Contributing
 
@@ -431,7 +436,7 @@ Contributions are welcome! Here's how you can help:
 python3 test_sqlmodel_integration.py
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -465,14 +470,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Nelson Parra** - *Initial work* - [@nparra-code](https://github.com/nparra-code)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - University of Antioquia - Electronic and Telecommunications Engineering Department
 - SQLModel framework by Sebastián Ramírez
 - CustomTkinter library by Tom Schimansky
 - Supabase for the database infrastructure
 
-## 📬 Contact
+## Contact
 
 For questions, feedback, or support regarding the course-mngr project:
 

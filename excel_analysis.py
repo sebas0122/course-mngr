@@ -1,7 +1,28 @@
+##
+# @file excel_analysis.py
+# @brief Excel file parsing and course data extraction
+#
+# This module provides functionality for reading Excel files containing course
+# schedule information and converting them to database format. It handles parsing
+# of course data, professor information, and schedule strings from the university's
+# programming spreadsheets.
+#
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 import pandas as pd
 import re
 from courses_functions import getHoursLong
 
+##
+# @brief Read Excel file containing course data
+#
+# Opens and reads an Excel file using pandas, defaulting to the sheet named
+# "PROGRAMACION_2025_1".
+#
+# @param file_path Path to the Excel file
+# @param sheet_name Name of the sheet to read (default: "PROGRAMACION_2025_1")
+# @return pandas DataFrame containing the sheet data, or None if error occurs
 def read_excel_file(file_path, sheet_name="PROGRAMACION_2025_1"):
     try:
         df = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -10,13 +31,22 @@ def read_excel_file(file_path, sheet_name="PROGRAMACION_2025_1"):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-## getCleanData function
-# This function takes a DataFrame and processes it to extract relevant information for the database.
-# It iterates through the DataFrame and cleans the data, creating a list of courses and a list for the database.
-# It takes the following parameter:
-# - dataframe: a DataFrame containing the data to be processed
-# Returns:
-# - for_db: a list of lists containing the cleaned data for the database
+##
+# @brief Extract and clean course data from DataFrame
+#
+# This function processes a raw Excel DataFrame and extracts course information
+# into a cleaned format suitable for database insertion. It handles:
+# - Course level/semester extraction from headers
+# - Theory and lab session separation
+# - Professor ID parsing (single or multiple)
+# - Schedule string formatting
+# - Elective course identification
+#
+# The function iterates through the DataFrame rows and builds a list of lists where
+# each inner list contains all fields needed for a database record.
+#
+# @param dataframe pandas DataFrame with raw course data from Excel
+# @return List of lists, each containing cleaned course data ready for database insertion
 def getCleanData(dataframe):
 
     courses = [] ##< Initialize the list of courses
@@ -113,13 +143,19 @@ def getCleanData(dataframe):
     print(for_db)
     return for_db
 
-## write_db_to_file function
-# This function takes a template file, an output database file, and data (in for_db format, returned by getCleanData function) to write to the database.
-# It reads the template file, extracts the table name and column names, and writes the data to the output file in SQL format.
-# It takes the following parameters:
-# - template_file: the path to the template file
-# - out_db_file: the path to the output database file
-# - data: the data to be written to the database
+##
+# @brief Write course data to SQL file
+#
+# This function takes a SQL template file and generates INSERT statements for
+# all courses in the data list. It:
+# - Reads the template to extract table name and column names
+# - Formats each data row as a SQL INSERT statement
+# - Handles different data types (strings, booleans, lists, nulls)
+# - Writes all statements to the output file
+#
+# @param template_file Path to SQL template file with CREATE TABLE statement
+# @param out_db_file Path to output file where INSERT statements will be written
+# @param data List of course data lists (output from getCleanData)
 def write_db_to_file(template_file, out_db_file, data):
     # Read the template file and extract the table name and column names
     with open(template_file, "r", encoding="utf-8") as file:
@@ -186,6 +222,15 @@ def write_db_to_file(template_file, out_db_file, data):
             # Close the insert statement
             file.write(");\n")
 
+##
+# @brief Extract professor data from DataFrame
+#
+# This function processes professor information from an Excel DataFrame and
+# returns it as a list of lists suitable for database insertion. Each professor
+# record includes ID, name, email, cathedra status, hiring type, and education level.
+#
+# @param dataframe pandas DataFrame containing professor data from Excel
+# @return List of lists, each containing professor data fields
 def getProfessorsData(dataframe):
     """
     This function extracts professors' data from the DataFrame and returns it as a list of dictionaries.
@@ -212,6 +257,16 @@ def getProfessorsData(dataframe):
     
     return professors
 
+##
+# @brief Write professor data to SQL file
+#
+# This function generates SQL INSERT statements for professor data and writes them
+# to the output file. It uses a simpler format than write_db_to_file since the
+# professor table structure is fixed.
+#
+# @param template_file Path to SQL template file with CREATE TABLE statement
+# @param out_db_file Path to output file where INSERT statements will be written
+# @param data List of professor data lists
 def write_prof_db_to_file(template_file, out_db_file, data):
     with open(template_file, "r", encoding="utf-8") as template:
         template_content = template.read()
