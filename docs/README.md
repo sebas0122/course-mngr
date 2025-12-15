@@ -11,7 +11,6 @@ This directory contains all documentation for the Course Manager application.
 ### Technical Documentation
 - **[SQLMODEL_MIGRATION.md](../SQLMODEL_MIGRATION.md)** - Details about the SQLModel architecture migration
 - **[SQLMODEL_USAGE.md](../SQLMODEL_USAGE.md)** - API reference and code examples for developers
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history and release notes
 
 ### Configuration
 - **[.env.example](../.env.example)** - Template for environment variables
@@ -22,13 +21,12 @@ This directory contains all documentation for the Course Manager application.
 ### I'm a New User
 1. Start with [QUICKSTART.md](../QUICKSTART.md) - 5-minute setup guide
 2. Then read the **Usage** section in [README.md](../README.md)
-3. Refer to [CHANGELOG.md](../CHANGELOG.md) for current version info
 
 ### I'm a Developer
 1. Read [README.md](../README.md) - Overview and architecture
 2. Study [SQLMODEL_MIGRATION.md](../SQLMODEL_MIGRATION.md) - Understand the data models
 3. Use [SQLMODEL_USAGE.md](../SQLMODEL_USAGE.md) as API reference
-4. Check [CHANGELOG.md](../CHANGELOG.md) for recent changes
+3. Read [BUILD_INSTRUCTIONS.md](../BUILD_INSTRUCTIONS.md) to generate .exe file.
 
 ### I'm an Administrator
 1. Read [QUICKSTART.md](../QUICKSTART.md) - Initial setup
@@ -38,7 +36,6 @@ This directory contains all documentation for the Course Manager application.
 ### I Want to Contribute
 1. Read the **Contributing** section in [README.md](../README.md)
 2. Review [SQLMODEL_MIGRATION.md](../SQLMODEL_MIGRATION.md) - Understand the codebase
-3. Check [CHANGELOG.md](../CHANGELOG.md) - See what's planned
 4. Follow the development guidelines
 
 ## 📖 File Descriptions
@@ -80,13 +77,6 @@ Developer API reference including:
 - Type safety features
 - Common patterns and best practices
 
-### CHANGELOG.md
-Version history and release notes:
-- What's new in each version
-- Breaking changes
-- Migration guides
-- Future plans and roadmap
-
 ### .env.example
 Template for environment configuration:
 - Supabase URL and key placeholders
@@ -121,9 +111,6 @@ List of Python dependencies with version specifications:
 **Contribute to the project?**
 → [README.md](../README.md) → Contributing section
 
-**See what's changed?**
-→ [CHANGELOG.md](../CHANGELOG.md)
-
 **Configure my environment?**
 → [.env.example](../.env.example) and [QUICKSTART.md](../QUICKSTART.md)
 
@@ -157,6 +144,5 @@ Documentation improvements are always welcome!
 
 ---
 
-**Last Updated**: December 2025  
-**Version**: See [CHANGELOG.md](../CHANGELOG.md)  
+**Last Updated**: December 2025
 **Maintained by**: [@nparra-code](https://github.com/nparra-code)

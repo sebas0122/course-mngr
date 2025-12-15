@@ -1,3 +1,15 @@
+##
+# @file dnd.py
+# @brief Drag-and-drop label functionality for course scheduling
+#
+# This module implements a custom drag-and-drop label widget for the course scheduler.
+# It provides interactive labels that can be dragged around the schedule grid, with
+# automatic snapping to valid time slots and responsive layout when multiple items
+# occupy the same slot.
+#
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 from tkinter import *
 import customtkinter as ctk
 
@@ -7,9 +19,12 @@ ylimit = [] ##< ylimit is to locate y positions of the labels in the grid
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] ##< days is to set the names of the days of the week
 days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"] ##< days_es is to set the names of the days of the week in Spanish
 
-# --- NEW: occupancy map to handle responsive widths when multiple items share a slot
+##< Occupancy map tracking which widgets are in each grid slot
+# Key: (index_x, index_y, hours, type) -> list of Label widgets
 slot_occupancy = {}  # key: (index_x, index_y, hours, type) -> list of Label widgets
 
+##< Sample data for classes - format: "<class name>_<number of hours>"
+# The blank elements create free space. First list is Monday, second is Tuesday, etc.
 classes_list = [
     ["class2_2,1,2,3", "blank_2", "class3_3,3,4,5", "blank_5", "class4_4"],
     ["class2_2", "class2_2", "blank_4", "class_2"],
@@ -28,29 +43,48 @@ labs_list = [
     ["blank_4", "lab2_2", "lab1_1"],
 ] ##< labs contains the labs for each day of the week, coded as <lab name>_<number of hours>. The blank elements are used to create free space in the grid. First list is Monday, second is Tuesday, and so on. The number of hours must add maximum 16, which is the total number of hours in the schedule.
 
-## dnd_label class
+##
+# @class dnd_label
+# @brief Draggable label widget for course schedule grid
 #
-# This class is used to create the Drag and Drop labels for the classes and labs in the schedule. It inherits from the Label class of tkinter.
-# The class has the following methods:
-# - __init__: This method is used to initialize the class. It takes the following parameters:
-# - on_press: This method is used to get the position of the mouse when the label is pressed.
-# - on_drag: This method is used to move the label when the mouse is dragged.
-# - on_release: This method is used to check if the label is moved out of the window or the grid. If it is moved out of the window, it is moved back to the original position. If it is moved out of the grid, it is moved to the nearest position in the grid.
+# This class creates interactive labels that can be dragged and dropped within a
+# schedule grid. Labels automatically snap to valid grid positions and support
+# responsive layout when multiple items occupy the same time slot. Each label
+# represents a class or lab session and displays course information on click.
+#
+# Features:
+# - Drag-and-drop functionality with grid snapping
+# - Visual feedback during drag operations
+# - Automatic layout adjustment for overlapping items
+# - Information display panel integration
+# - Edit tracking for database updates
 class dnd_label:
 
-    ## The constructor.
-    # It takes the following parameters:
-    # @param window: The window where the label will be placed.
-    # @param geometry_width: The width of the window.
-    # @param geometry_height: The height of the window.
-    # @param text: The text to be displayed in the label.
-    # @param bg_color: The background color of the label.
-    # @param w: The width of the label.
-    # @param h: The height of the label.
-    # @param posx: The x position of the label.
-    # @param posy: The y position of the label.
-    # @param hours: The number of hours the label will occupy in the grid.
-    # @param type: The type of the label (class or lab).
+    ##
+    # @brief Constructor for draggable label
+    #
+    # Creates a customtkinter label with drag-and-drop functionality and registers it
+    # in the slot occupancy map for responsive layout management.
+    #
+    # @param window Parent window/frame for the label
+    # @param image PhotoImage object for label background
+    # @param geometry_width Width of the parent window (for boundary checking)
+    # @param geometry_height Height of the parent window (for boundary checking)
+    # @param lab_disp Horizontal displacement for lab labels (0 for classes)
+    # @param text Display text (course name and group)
+    # @param bg_color Background color for the label
+    # @param w Width of the label in pixels
+    # @param h Height of the label in pixels (based on duration)
+    # @param posx Initial X position in the grid
+    # @param posy Initial Y position in the grid
+    # @param hours Duration in hours (affects label height)
+    # @param type Label type: "class" or "lab"
+    # @param room Room/classroom assignment
+    # @param info_label Reference to information display label
+    # @param cl_info Dictionary with course information
+    # @param proffs_info Dictionary with professor information
+    # @param cell_to_edit Reference to currently selected cell for editing
+    # @param c_edited List tracking edited course keys
     def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit, c_edited):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
@@ -94,7 +128,15 @@ class dnd_label:
                 print(f"Error in layout update: {e}")
                 pass
     
-     # --- NEW helpers for slot registration/layout ---
+    ##
+    # @brief Compute grid slot position from pixel coordinates
+    #
+    # Converts pixel coordinates to grid slot indices by finding the closest
+    # grid positions in the xlimit and ylimit arrays.
+    #
+    # @param posx X coordinate in pixels
+    # @param posy Y coordinate in pixels
+    # @return Tuple (index_x, index_y, type) or None if limits not initialized
     def _compute_slot_from_pos(self, posx, posy):
         if not xlimit or not ylimit:
             return None
@@ -106,6 +148,14 @@ class dnd_label:
         index_y = diff_y.index(min(diff_y))
         return (index_x, index_y, self.type)
 
+    ##
+    # @brief Register label in slot occupancy map and update layout
+    #
+    # Adds this label to the occupancy tracking for its current grid position
+    # and triggers a layout update to handle multiple items in the same slot.
+    #
+    # @param posx X coordinate (uses current position if None)
+    # @param posy Y coordinate (uses current position if None)
     def register_to_slot(self, posx=None, posy=None):
         # register label widget into slot_occupancy and trigger layout update
         if posx is None or posy is None:
@@ -123,6 +173,13 @@ class dnd_label:
         self._slot_key = slot
         self._update_slot_layout(slot)
 
+    ##
+    # @brief Remove label from slot occupancy map
+    #
+    # Removes this label from the occupancy tracking and triggers layout
+    # update for remaining widgets in the slot.
+    #
+    # @param slot Slot tuple (index_x, index_y, type)
     def unregister_from_slot(self, slot):
         if slot is None:
             return
@@ -136,6 +193,13 @@ class dnd_label:
         if self._slot_key == slot:
             self._slot_key = None
 
+    ##
+    # @brief Update layout for all widgets in a slot
+    #
+    # Recalculates and applies positioning for all widgets sharing the same
+    # grid slot. Widgets are arranged side-by-side with equal width distribution.
+    #
+    # @param slot Slot tuple (index_x, index_y, type)
     def _update_slot_layout(self, slot):
         if slot not in slot_occupancy:
             return
@@ -162,10 +226,14 @@ class dnd_label:
                 print(f"Error in layout update: {e}")
                 pass
     
-    ## on_press method
-    # This method is used to get the position of the mouse when the label is pressed.
-    # It takes the following parameters:
-    # @param event: The event that triggered the method.
+    ##
+    # @brief Mouse press event handler
+    #
+    # Captures the initial mouse position when the label is clicked and updates
+    # the information panel with course details. Also handles visual feedback
+    # by darkening the label during drag operations.
+    #
+    # @param event Tkinter event object containing mouse coordinates
     def on_press(self, event):
         self.x = event.x ##< Get the x position of the mouse
         self.y = event.y ##< Get the y position of the mouse
@@ -206,19 +274,27 @@ class dnd_label:
         else:
             self.info_label.configure(text=f"Código de materia: {self.cl_info[key_info]['codigo']}\t\tProfesores: {', '.join(professors)}\n\nGrupos: {', '.join(map(str, self.cl_info[key_info]['grupo']))}\t\t\t\tID Profesores: {', '.join(map(str, self.cl_info[key_info]['profesor']))}\n\nTipo de materia: {'Teoría' if self.type == 'class' else 'Laboratorio'}\t\tAula: {self.cl_info[key_info]['aula']}") ##< Set the text of the info label to the course code, groups, and professors of the label being moved
 
-    ## on_drag method
-    # This method is used to move the label when the mouse is dragged.
-    # It takes the following parameters:
-    # @param event: The event that triggered the method.
+    ##
+    # @brief Mouse drag event handler
+    #
+    # Updates the label position to follow the mouse during drag operations.
+    # The label moves continuously as the mouse is dragged.
+    #
+    # @param event Tkinter event object containing mouse coordinates
     def on_drag(self, event):
         x = self.label.winfo_x() - self.x + event.x ##< Get the new x position of the label
         y = self.label.winfo_y() - self.y + event.y ##< Get the new y position of the label
         self.label.place(x=x, y=y) ##< Set the new position of the label. Keeps updating the position of the label as it is dragged.
 
-    ## on_release method
-    # This method is used to check if the label is moved out of the window or the grid. If it is moved out of the window, it is moved back to the original position. If it is moved out of the grid, it is moved to the nearest position in the grid.
-    # It takes the following parameters:
-    # @param event: The event that triggered the method.
+    ##
+    # @brief Mouse release event handler
+    #
+    # Handles the end of a drag operation by snapping the label to the nearest
+    # valid grid position and updating the course information dictionaries. Also
+    # manages slot occupancy for responsive layout and prevents labels from being
+    # dragged outside the window boundaries.
+    #
+    # @param event Tkinter event object containing final mouse coordinates
     def on_release(self, event):
         print("on_release: x=%d, y=%d" % (self.label.winfo_x(), self.label.winfo_y())) ##< Print the position of the label when it is released
 

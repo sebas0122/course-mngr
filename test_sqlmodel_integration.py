@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+##
+# @file test_sqlmodel_integration.py
+# @brief Integration test suite for SQLModel data models
+#
+# This script verifies that the Course and Professor SQLModel classes work correctly
+# and integrate properly with the courses_functions module. It performs a series of
+# tests including object creation, serialization, validation, and function imports.
+#
+# Test coverage:
+# - Course model creation and methods
+# - Professor model creation and validation
+# - SQLModel serialization (model_dump)
+# - Input validation and normalization
+# - Function imports from courses_functions
+#
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 """
 Test script to verify SQLModel integration works correctly.
 """

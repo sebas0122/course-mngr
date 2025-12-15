@@ -1,8 +1,21 @@
+##
+# @file sql_to_python.py
+# @brief Database query and schedule processing script
+#
+# This module connects to a PostgreSQL database to retrieve course data and processes
+# it into schedule lists for display. It demonstrates querying the database using
+# SQLAlchemy and organizing courses by day and time with automatic gap filling.
+#
+# @note This script uses a local PostgreSQL connection and may need credentials updated
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 import pandas as pd
 from courses_functions import getClassSchedule
 
+##< Database connection parameters
 uid = 'postgres'
 pwd = 'UdeA_elecNtelDPT*'
 host = 'localhost'

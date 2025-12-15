@@ -32,10 +32,14 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
+main.spec
+!build_exe.spec
+*.manifest
+
+# PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
 
 # Installer logs
 pip-log.txt
@@ -75,6 +79,9 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+
+# Doxygen generated documentation
+docs/doxygen/
 
 # PyBuilder
 .pybuilder/

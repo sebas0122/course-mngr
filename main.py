@@ -1,3 +1,15 @@
+##
+# @file main.py
+# @brief Main application file for the Course Manager system
+#
+# This module implements the main GUI application for managing university course schedules.
+# It provides a drag-and-drop interface for arranging classes and labs in a weekly schedule grid,
+# with support for editing, adding, and deleting courses. The application connects to a Supabase
+# database to store and retrieve course and professor information.
+#
+# @author Nelson Parra (nelson.parra@udea.edu.co)
+# @date 2025
+
 from tkinter import *
 from tkinter import ttk, filedialog
 from unicodedata import name
@@ -20,8 +32,8 @@ window_bg_color = "#F0F1EF" ##< Set the background color of the window
 
 window.attributes('-fullscreen', False)
 window.configure(bg=window_bg_color) ##< Set the background color of the window
-window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
-# window.state('zoomed') ##< Maximize the window (windowed full-screen)
+# window.attributes('-zoomed', True)  ##< Maximize the window (windowed full-screen)
+window.state('zoomed') ##< Maximize the window (windowed full-screen)
 
 # ensure window is mapped and layout updated, then use the window's actual size
 window.update_idletasks()
@@ -131,12 +143,19 @@ class_edit = {"key": None}
 classes_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 labs_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 deleted_keys = [] ##< Initialize the list of classes and labs deleted keys
-## add_classes_labs function
-# This function adds classes and labs to the schedule. It takes the following parameters:
-# - classes: a list of classes for each day
-# - labs: a list of labs for each day
-# Returns:
-# - labels_ids: a list of labels ids for the classes and labs added to the schedule
+
+##
+# @brief Add classes and labs to the schedule grid
+#
+# This function creates draggable labels for all classes and labs and places them
+# in the appropriate positions on the weekly schedule grid based on their day and time.
+#
+# @param classes List of class information for each day of the week
+# @param labs List of lab information for each day of the week
+# @param cl_information_label Dictionary mapping class keys to their detailed information
+# @param lb_information_label Dictionary mapping lab keys to their detailed information
+# @param professors_information Dictionary mapping professor IDs to their details
+# @return List of widget IDs for the created class and lab labels
 def add_classes_labs(classes, labs, cl_information_label, lb_information_label, professors_information):
     global colors_idx, class_colors_dict, screen_width, screen_height, single_width, single_height, lab_displacement, class_edit
     labels_ids = [] ##< Initialize the list of labels ids
@@ -220,9 +239,15 @@ lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info) ##< Call the function t
 
 # Add dropdown menu for level selection
 
-## change_level function
-# This function is called when the user selects a level from the dropdown menu. It updates the schedule with the classes and labs for the selected level.
-# It takes no parameters and returns nothing because it modifies the global variable lbs_ids.
+##
+# @brief Change the displayed semester level
+#
+# This function is triggered when the user selects a different semester level from the
+# dropdown menu. It clears the current schedule display and reloads it with the courses
+# for the selected semester. The function refreshes the database connection to get the
+# latest data before displaying.
+#
+# @note Modifies global variables: lbs_ids, c_info, l_info, colors_idx, class_colors_dict
 def change_level():
     global lbs_ids, c_info, l_info, colors_idx, class_colors_dict, supabase_instance
     colors_idx = 0 ##< Reset the index for the colors
@@ -299,6 +324,21 @@ dd_button = ctk.CTkButton(window,
                           hover_color="#a3cde8") ##< Create a button to update the label
 dd_button.place(x=int(screen_width*(14/15)), y=single_height*4) ##< Set the position of the quit button
 
+##
+# @brief Open dialog window for adding a new class or lab
+#
+# This function creates a popup window with a form for adding new courses to the schedule.
+# It provides fields for entering course information including name, code, professors,
+# schedule details, and room assignments. The window supports adding multiple schedule
+# entries (theory and lab) for the same course.
+#
+# Features:
+# - Auto-complete for course names and codes from existing database
+# - Professor ID lookup with name display
+# - Multiple schedule entry rows for theory and lab sessions
+# - Form validation and data saving to schedule
+#
+# @note Updates global variables c_info, l_info, classes_edited_keys, labs_edited_keys
 def open_add_class_window():
     add_win = Toplevel(window)
     add_win.title("Add Class")
@@ -775,6 +815,14 @@ add_button = ctk.CTkButton(window,
                            hover_color="#f7f1a8") ##< Create a button to add a new class
 add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the position of the quit button
 
+##
+# @brief Save all schedule changes to the database
+#
+# This function commits all pending changes (edits, additions, deletions) to the
+# Supabase database. It updates both theory classes and lab sessions, then clears
+# the tracking lists and refreshes the display.
+#
+# @note Clears classes_edited_keys, labs_edited_keys, and deleted_keys after saving
 def update_database():
     update_schedule_in_db(supabase_instance, c_info, classes_edited_keys, False) ##< Function to update the database with the current schedule
     update_schedule_in_db(supabase_instance, l_info, labs_edited_keys, True) ##< Function to update the database with the current schedule
@@ -796,6 +844,16 @@ update_button = ctk.CTkButton(window,
                               hover_color="#a3cde8") ##< Create a button to update the database
 update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 
+##
+# @brief Open dialog window for editing an existing class or lab
+#
+# This function creates a popup window with a form pre-filled with the currently
+# selected course's information. Users can modify course details including professors,
+# room assignments, duration, and groups. Some fields like code and start time are
+# disabled to maintain schedule integrity.
+#
+# @note Requires class_edit['key'] to be set to a valid course key
+# @note Updates c_info or l_info dictionaries with modified course information
 def open_edit_class_window():
     add_win = Toplevel(window)
     add_win.title("Edit Class")
@@ -972,6 +1030,14 @@ edit_button = ctk.CTkButton(window,
                             hover_color="#a3cde8") ##< Create a button to edit the selected class or lab
 edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
 
+##
+# @brief Delete the currently selected class or lab from the schedule
+#
+# This function removes the selected course from both the GUI display and marks it
+# for deletion from the database. The actual database deletion occurs when the user
+# clicks the "Guardar Cambios" (Save Changes) button.
+#
+# @note Updates global variables: class_edit, deleted_keys, c_info, l_info, lbs_ids
 def delete_selected_class():
     global class_edit, deleted_keys
     key = class_edit['key']
@@ -1023,7 +1089,21 @@ delete_button = ctk.CTkButton(window,
                               hover_color="#c50000") ##< Create a button to delete the selected class or lab
 delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 
-# Add this function before creating the export button
+##
+# @brief Export all course data to an Excel file
+#
+# This function retrieves all courses and professors from the database and exports
+# them to an Excel spreadsheet. The data is formatted according to the original
+# import format with columns for course information, schedules, and professor details.
+# The output is sorted by semester level and course code.
+#
+# Features:
+# - Joins course data with professor information
+# - Converts professor ID lists to pipe-separated strings
+# - Handles multiple professors per course
+# - Provides file dialog for choosing save location
+#
+# @note Requires pandas library for Excel export functionality
 def export_to_excel():
     """Export the current database to an Excel file."""
     try:
@@ -1143,6 +1223,14 @@ export_button = ctk.CTkButton(window,
                               hover_color="#a3e8e8")
 export_button.place(x=int(screen_width*(14/15)), y=single_height*16)
 
+##
+# @brief Open dialog window for adding a new professor
+#
+# This function creates a popup window with a form for entering new professor
+# information including name, ID number, email, cathedra status, hiring type,
+# and education level. The data is validated and saved to the database.
+#
+# @note Creates a Professor SQLModel object and saves it using addProfessorToDB
 def add_professor():
     add_win = Toplevel(window)
     add_win.title("Nuevo Profesor")
