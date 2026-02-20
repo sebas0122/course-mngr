@@ -50,7 +50,7 @@ class Course(SQLModel, table=True):
     aula: str = Field(description="Room/classroom")  ##< Room or classroom assignment
 
     class Config:
-        arbitrary_types_allowed = True
+        arbitrary_types_allowed = True 
 
     ##
     # @brief Generate the complete course code

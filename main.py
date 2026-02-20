@@ -49,7 +49,15 @@ if screen_width <= 1 or screen_height <= 1:
 pixel = PhotoImage(width=1, height=1)
 
 single_width = int(screen_width / 14) ##< Set the width of a single cell
-single_height = int(screen_height / 22) ##< Set the height of a single cell
+
+# Calculate single_height to fit schedule and leave space for information label
+# Schedule needs: 2 header rows + 16 hour rows (6:00-21:00) = 18 rows
+info_label_space = 80  # pixels reserved for information label at bottom
+available_height = screen_height - info_label_space
+single_height = int(available_height / 19)  ##< Automatically fits available space
+
+#single_height = int((screen_height / 20)) ##< Set the height of a single cell
+#label_height_multiplier = 1  ##< Multiplier for draggable label heights
 
 lab_displacement = int(2*single_width)-single_width ##< lab_displacement is to set the displacement of the labs cells in the grid (compared to the rooms). This is done to avoid overlapping with the rooms and avoid creating another xlimit list. The value is how many pixels is moved to the right.
 
@@ -60,7 +68,7 @@ for hour in range(6, 22):
                   bg=window_bg_color,
                   text=f"{hour}:00",
                   width=single_width-4,
-                  height=single_height,
+                  height=int(single_height),
                   compound="center")
     if hour == 6:
         label.place(x=0, y=single_height*2) ##< Set the first label at 6:00
@@ -78,8 +86,9 @@ information_label = Label(window,
                           width=screen_width,
                           compound="center",
                           bg=window_bg_color) ##< Create a label for the test
-information_label.place(x=0, y=ylimit[-1]+2*single_height) ##< Set the rest of the labels at 7:00 and above
-
+#information_label.place(x=0, y=ylimit[-1]+2*single_height) ##< Set the rest of the labels at 7:00 and above
+#information_label.place(x=0, y=min(ylimit[-1]+2*single_height, screen_height - 100))
+information_label.place(x=0, y=ylimit[-1]+single_height)
 # Add labels for days
 for day in range(6):
     label = Label(window,
@@ -195,6 +204,7 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         c_edited=classes_edited_keys) ##< Create the drag&drop label for the class
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
+            labels_ids[-1].course_key = cl  # cl es el key único de la clase/lab, se asigna como atributo del widget para facilitar su identificación al editar/eliminar
         i+=1 ##< Increment the index for xlimit by 1
 
     # Add labs to schedule
@@ -229,6 +239,7 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         c_edited=labs_edited_keys) ##< Create the drag&drop label for the lab
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
+            labels_ids[-1].course_key = cl  # cl es el key único de la clase/lab
         i+=1 ##< Increment the index for xlimit by 1
 
     return labels_ids ##< Return the list of labels ids
@@ -248,6 +259,7 @@ lbs_ids = add_classes_labs(c, l, c_info, l_info, p_info) ##< Call the function t
 # latest data before displaying.
 #
 # @note Modifies global variables: lbs_ids, c_info, l_info, colors_idx, class_colors_dict
+
 def change_level():
     global lbs_ids, c_info, l_info, colors_idx, class_colors_dict, supabase_instance
     colors_idx = 0 ##< Reset the index for the colors
@@ -344,6 +356,13 @@ def open_add_class_window():
     add_win.title("Add Class")
     add_win.geometry(f"{int(screen_width*0.8)}x{int(screen_height*0.7)}")
 
+    # Define larger fonts for the dialog
+    DIALOG_FONT = ("Arial", 16)
+    DIALOG_LABEL_FONT = ("Arial", 14)
+    DIALOG_BUTTON_FONT = ("Arial", 15, "bold")
+    DIALOG_ENTRY_WIDTH = 300
+    DIALOG_ENTRY_HEIGHT = 38
+
     # Get all courses data for search
     all_courses_list = retrieveDBTable(supabase_instance, "materias")
     # Build a mapping of course code -> course name and vice versa
@@ -364,29 +383,29 @@ def open_add_class_window():
         }
 
     # --- Form Fields ---
-    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
-    name_entry.pack(pady=5)
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre", font=DIALOG_FONT, width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT)
+    name_entry.pack(pady=10)
 
     # --- Row for code entries ---
     row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
-    row_code_frame.pack(pady=5)
+    row_code_frame.pack(pady=10)
 
     fac_column = ctk.CTkFrame(row_code_frame, fg_color="transparent")
-    fac_column.pack(side=LEFT, padx=5)
-    fac_entry = ctk.CTkEntry(fac_column, placeholder_text="Facultad", width=70)
+    fac_column.pack(side=LEFT, padx=10)
+    fac_entry = ctk.CTkEntry(fac_column, placeholder_text="Facultad", width=120, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     fac_entry.pack()
-    fac_label = ctk.CTkLabel(fac_column, text="<Facultad>")
-    fac_label.pack(pady=(2, 0))
+    #fac_label = ctk.CTkLabel(fac_column, text="<Facultad>", font=DIALOG_LABEL_FONT)
+    #fac_label.pack(pady=(4, 0))
 
     dep_column = ctk.CTkFrame(row_code_frame, fg_color="transparent")
-    dep_column.pack(side=LEFT, padx=5)
-    dep_entry = ctk.CTkEntry(dep_column, placeholder_text="Dependencia", width=90)
+    dep_column.pack(side=LEFT, padx=10)
+    dep_entry = ctk.CTkEntry(dep_column, placeholder_text="Dependencia", width=150, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     dep_entry.pack()
-    dep_label = ctk.CTkLabel(dep_column, text="<Dependencia>")
-    dep_label.pack(pady=(2, 0))
+    #dep_label = ctk.CTkLabel(dep_column, text="<Dependencia>", font=DIALOG_LABEL_FONT)
+    #dep_label.pack(pady=(4, 0))
 
-    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
-    mat_entry.pack(padx=5, side=LEFT)
+    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=120, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+    mat_entry.pack(padx=10, side=LEFT)
 
     # small mapping for codes -> names (add more codes as needed)
     _fac_map = {"25": "Ingeniería"}
@@ -399,8 +418,8 @@ def open_add_class_window():
     def _update_code_labels(event=None):
         f = fac_entry.get().strip()
         d = dep_entry.get().strip()
-        fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
-        dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
+        #fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
+        #dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
 
     def _autofill_from_code(event=None):
         """When code fields change, look up the course name and autofill."""
@@ -427,7 +446,7 @@ def open_add_class_window():
             
             if matches:
                 # Create suggestion listbox below the code entries
-                code_suggestion_listbox = Listbox(row_code_frame, height=min(5, len(matches)), width=40)
+                code_suggestion_listbox = Listbox(row_code_frame, height=min(5, len(matches)), width=40, font=DIALOG_FONT)
                 code_suggestion_listbox.pack(pady=(5, 0))
                 
                 for code, name in matches[:10]:  # Limit to 10 suggestions
@@ -481,7 +500,7 @@ def open_add_class_window():
         
         if matches:
             # Create suggestion listbox below name entry
-            name_suggestion_listbox = Listbox(add_win, height=min(5, len(matches)), width=50)
+            name_suggestion_listbox = Listbox(add_win, height=min(5, len(matches)), width=50, font=DIALOG_FONT)
             name_suggestion_listbox.pack(pady=(0, 5))
             
             for code, name in matches[:10]:  # Limit to 10 suggestions
@@ -536,21 +555,26 @@ def open_add_class_window():
     labs_rows = []
 
     labs_container = ctk.CTkFrame(add_win, fg_color="transparent")
-    labs_container.pack(pady=5, fill='x')
+    labs_container.pack(pady=10, fill='x')
+
+    MAX_ENTRIES = 8  # Maximum number of schedule entries allowed
 
     def add_lab_row(initial=None):
         """Add a single schedule row (type, room, day, start, duration) to labs_container."""
+        if len(labs_rows) >= MAX_ENTRIES:
+            return  # Do not add more than MAX_ENTRIES rows
+        
         row = ctk.CTkFrame(labs_container, fg_color="transparent")
-        row.pack(pady=2)
+        row.pack(pady=6)
 
         # type selector: Teoría or Laboratorio
 
         prof_column = ctk.CTkFrame(row, fg_color="transparent")
-        prof_column.pack(side=LEFT, padx=5)
-        prof_entry = ctk.CTkEntry(prof_column, placeholder_text="ID del Profesor")
+        prof_column.pack(side=LEFT, padx=8)
+        prof_entry = ctk.CTkEntry(prof_column, placeholder_text="ID/Nombre del Profesor", font=DIALOG_FONT, width=180, height=DIALOG_ENTRY_HEIGHT)
         prof_entry.pack()
-        prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>")
-        prof_label.pack(pady=(2, 0))
+        #prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>", font=DIALOG_LABEL_FONT)
+        #prof_label.pack(pady=(4, 0))
 
         # Create suggestion listbox for professors
         p_info = getProfessorsData(supabase_instance)
@@ -605,7 +629,7 @@ def open_add_class_window():
             
             if matches:
                 # Create suggestion listbox
-                suggestion_listbox = Listbox(prof_column, height=min(5, len(matches)), width=30)
+                suggestion_listbox = Listbox(prof_column, height=min(5, len(matches)), width=30, font=DIALOG_FONT)
                 suggestion_listbox.pack()
                 
                 for prof_id, prof_name in matches[:10]:  # Limit to 10 suggestions
@@ -645,7 +669,7 @@ def open_add_class_window():
             full_text = prof_entry.get().strip()
             
             if not full_text:
-                prof_label.configure(text="<Nombre del profesor>")
+                #prof_label.configure(text="<Nombre del profesor>")
                 return
             
             # Split by comma and get all professor IDs
@@ -659,28 +683,28 @@ def open_add_class_window():
             
             # Join all names with comma
             display_text = ",\n".join(prof_names) if prof_names else "<Nombre del profesor>"
-            prof_label.configure(text=display_text)
+            #prof_names.configure(text=display_text)
         
         prof_entry.bind("<KeyRelease>", lambda e: (show_suggestions(e), _update_prof_label(e)))
         prof_entry.bind("<FocusOut>", lambda e: (_update_prof_label(e), hide_suggestions(e)))
 
         t_var = ctk.StringVar(value="Teoría")
-        ctk.CTkOptionMenu(row, values=["Teoría", "Laboratorio"], variable=t_var, width=100).pack(side=LEFT, padx=2)
+        ctk.CTkOptionMenu(row, values=["Teoría", "Laboratorio"], variable=t_var, width=150, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(side=LEFT, padx=4)
 
-        r_entry = ctk.CTkEntry(row, placeholder_text="Aula", width=80)
-        r_entry.pack(side=LEFT, padx=2)
+        r_entry = ctk.CTkEntry(row, placeholder_text="Aula", width=120, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+        r_entry.pack(side=LEFT, padx=4)
         d_var = ctk.StringVar(value="Lunes")
-        ctk.CTkOptionMenu(row, values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], variable=d_var, width=100).pack(side=LEFT, padx=2)
-        s_entry = ctk.CTkEntry(row, placeholder_text="Inicio", width=70)
-        s_entry.pack(side=LEFT, padx=2)
-        dur_entry = ctk.CTkEntry(row, placeholder_text="Duración", width=70)
-        dur_entry.pack(side=LEFT, padx=2)
+        ctk.CTkOptionMenu(row, values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], variable=d_var, width=150, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(side=LEFT, padx=4)
+        s_entry = ctk.CTkEntry(row, placeholder_text="Inicio", width=100, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+        s_entry.pack(side=LEFT, padx=4)
+        dur_entry = ctk.CTkEntry(row, placeholder_text="Duración", width=110, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+        dur_entry.pack(side=LEFT, padx=4)
 
-        group_entry = ctk.CTkEntry(row, placeholder_text="Grupo(s)", width=50)
-        group_entry.pack(side=LEFT, padx=2)
+        group_entry = ctk.CTkEntry(row, placeholder_text="Grupo(s)", width=100, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+        group_entry.pack(side=LEFT, padx=4)
 
-        remove_btn = ctk.CTkButton(row, text="-", width=30, command=lambda: remove_lab_row(row))
-        remove_btn.pack(side=LEFT, padx=4)
+        remove_btn = ctk.CTkButton(row, text="-", width=40, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_BUTTON_FONT, command=lambda: remove_lab_row(row))
+        remove_btn.pack(side=LEFT, padx=6)
 
         if initial:
             prof_entry.insert(0, initial.get('profesor', ''))
@@ -694,6 +718,10 @@ def open_add_class_window():
         labs_rows.append({'frame': row, 'prof': prof_entry, 'type': t_var, 'room': r_entry, 'day_var': d_var, 'start': s_entry, 'duration': dur_entry, 'group': group_entry})
         # print(prof_entry, t_var, r_entry, d_var, s_entry, dur_entry, group_entry)
 
+        # Disable the add button if we reached the limit
+        if len(labs_rows) >= MAX_ENTRIES:
+            add_lab_btn.configure(state="disabled")
+
     def remove_lab_row(frame):
         # remove the row from UI and internal list
         for r in labs_rows:
@@ -701,10 +729,13 @@ def open_add_class_window():
                 r['frame'].destroy()
                 labs_rows.remove(r)
                 break
+        # Re-enable the add button if below the limit
+        if len(labs_rows) < MAX_ENTRIES:
+            add_lab_btn.configure(state="normal")    
 
     # add-row button (plus sign) - now adds any entry (theory or lab)
-    add_lab_btn = ctk.CTkButton(add_win, text="+ Añadir Entrada", command=lambda: add_lab_row())
-    add_lab_btn.pack(pady=2)
+    add_lab_btn = ctk.CTkButton(add_win, text="+ Añadir Entrada", command=lambda: add_lab_row(), font=DIALOG_BUTTON_FONT, height=42, width=250)
+    add_lab_btn.pack(pady=8)
 
     # start with no extra lab rows by default; user can add
 
@@ -800,7 +831,7 @@ def open_add_class_window():
 
         add_win.destroy()
 
-    ctk.CTkButton(add_win, text="Guardar", command=save_class).pack(pady=20)
+    ctk.CTkButton(add_win, text="Guardar", command=save_class, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=20)
 
 # Button for adding a new class
 add_button = ctk.CTkButton(window,
@@ -857,10 +888,44 @@ update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 def open_edit_class_window():
     add_win = Toplevel(window)
     add_win.title("Edit Class")
-    add_win.geometry("400x500")
+    add_win.geometry("600x800")
+    # Define larger fonts for the dialog
+    DIALOG_FONT = ("Arial", 16)
+    DIALOG_LABEL_FONT = ("Arial", 14)
+    DIALOG_BUTTON_FONT = ("Arial", 15, "bold")
+    DIALOG_ENTRY_WIDTH = 300
+    DIALOG_ENTRY_HEIGHT = 38
+
+    # Get all courses data for search
+    all_professors_list = retrieveDBTable(supabase_instance, "profesores")
+
+    # Build professor mapping for suggestions
+    p_info = getProfessorsData(supabase_instance)
+
+    def _build_prof_map(prof_data):
+        mapping = {}
+        if isinstance(prof_data, dict):
+            for k, v in prof_data.items():
+                mapping[str(k)] = v if isinstance(v, str) else (v.get('name') if isinstance(v, dict) else str(v))
+            return mapping
+        try:
+            for prof in prof_data:
+                if isinstance(prof, dict) and 'id' in prof and 'name' in prof:
+                    mapping[str(prof['id'])] = prof['name']
+                elif isinstance(prof, (list, tuple)) and len(prof) >= 2:
+                    mapping[str(prof[0])] = prof[1]
+                elif isinstance(prof, str):
+                    if ':' in prof:
+                        id_, name = prof.split(':', 1)
+                        mapping[id_.strip()] = name.strip()
+            return mapping
+        except TypeError:
+            return {}
+        
+    _p_map = _build_prof_map(p_info)    
 
     # --- Form Fields ---
-    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre")
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     name_entry.pack(pady=5)
     name_entry.insert(0, c_info[class_edit['key']]['nombre'] if class_edit['key'] in c_info else l_info[class_edit['key']]['nombre'])
 
@@ -868,17 +933,17 @@ def open_edit_class_window():
     row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
     row_code_frame.pack(pady=5)
 
-    fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70)
+    fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     fac_entry.pack(padx=5, side=LEFT)
     fac_entry.insert(0, c_info[class_edit['key']]['facultad'] if class_edit['key'] in c_info else l_info[class_edit['key']]['facultad'])
     fac_entry.configure(state="disabled")
 
-    dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90)
+    dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     dep_entry.pack(padx=5, side=LEFT)
     dep_entry.insert(0, c_info[class_edit['key']]['dependencia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['dependencia'])
     dep_entry.configure(state="disabled")   
 
-    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60)
+    mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     mat_entry.pack(padx=5, side=LEFT)
     mat_entry.insert(0, c_info[class_edit['key']]['materia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['materia'])
     mat_entry.configure(state="disabled")
@@ -888,13 +953,13 @@ def open_edit_class_window():
     _dep_map = {"98": "Electrónica"}
 
     # --- Row for code labels ---
-    row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent", height=30, width=400)
     row_code_labels_frame.pack(pady=2)
 
-    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>")
+    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>", font=DIALOG_LABEL_FONT)
     fac_label.pack(padx=10, side=LEFT)
 
-    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>")
+    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>", font=DIALOG_LABEL_FONT)
     dep_label.pack(padx=5, side=LEFT)
 
     def _update_code_labels_edit(event=None):
@@ -907,40 +972,119 @@ def open_edit_class_window():
     _update_code_labels_edit()
 
     # --- Row for professor ID and name ---
-    row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent")
+    row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent", height=80, width=400)
     row_prof_frame.pack(pady=5)
 
-    prof_entry = ctk.CTkEntry(row_prof_frame, placeholder_text="ID del Profesor")
-    prof_entry.pack(padx=2, side=LEFT)
+    prof_column = ctk.CTkFrame(row_prof_frame, fg_color="transparent", height=80, width=400)
+    prof_column.pack(side=LEFT, padx=5)
+
+    prof_entry = ctk.CTkEntry(prof_column, placeholder_text="ID del Profesor", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
+    prof_entry.pack()
     prof_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['profesor'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['profesor'])))
 
-    prof_label = ctk.CTkLabel(row_prof_frame, text="<Nombre del profesor>")
-    prof_label.pack(padx=2, side=LEFT)
+    prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>", font=DIALOG_LABEL_FONT)
+    prof_label.pack(pady=(2, 0))
 
-    room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula")
+    # Professor suggestion listbox
+    prof_suggestion_listbox = None
+
+    def show_prof_suggestions(event=None):
+        nonlocal prof_suggestion_listbox
+        full_text = prof_entry.get()
+        
+        # Get the current professor being typed (after last comma)
+        if ',' in full_text:
+            search_text = full_text.split(',')[-1].strip()
+        else:
+            search_text = full_text.strip()
+        
+        # Close existing listbox if present
+        if prof_suggestion_listbox:
+            prof_suggestion_listbox.destroy()
+            prof_suggestion_listbox = None
+        
+        if not search_text:
+            return
+        
+        # Filter professors based on search
+        matches = []
+        for prof_id, prof_name in _p_map.items():
+            if search_text.lower() in prof_id.lower() or search_text.lower() in prof_name.lower():
+                matches.append((prof_id, prof_name))
+        
+        if matches:
+            prof_suggestion_listbox = Listbox(prof_column, height=min(5, len(matches)), width=30, font=DIALOG_FONT)
+            prof_suggestion_listbox.pack()
+            
+            for prof_id, prof_name in matches[:10]:
+                prof_suggestion_listbox.insert(END, f"{prof_id} - {prof_name}")
+            
+            def select_prof_suggestion(event):
+                nonlocal prof_suggestion_listbox
+                selection = prof_suggestion_listbox.curselection()
+                if selection:
+                    selected = prof_suggestion_listbox.get(selection[0])
+                    prof_id = selected.split(" - ")[0]
+                    
+                    full_text = prof_entry.get()
+                    if ',' in full_text:
+                        existing_profs = ','.join(full_text.split(',')[:-1])
+                        new_text = f"{existing_profs}, {prof_id}"
+                    else:
+                        new_text = prof_id
+                    
+                    prof_entry.delete(0, END)
+                    prof_entry.insert(0, new_text)
+                    update_prof_label()
+                if prof_suggestion_listbox:
+                    prof_suggestion_listbox.destroy()
+                    prof_suggestion_listbox = None
+            
+            prof_suggestion_listbox.bind("<<ListboxSelect>>", select_prof_suggestion)
+            prof_suggestion_listbox.bind("<Double-Button-1>", select_prof_suggestion)
+
+    def hide_prof_suggestions(event=None):
+        nonlocal prof_suggestion_listbox
+        add_win.after(200, lambda: prof_suggestion_listbox.destroy() if prof_suggestion_listbox else None)
+
+    def update_prof_label(event=None):
+        full_text = prof_entry.get().strip()
+        if not full_text:
+            prof_label.configure(text="<Nombre del profesor>")
+            return
+        
+        prof_ids = [p.strip() for p in full_text.split(',') if p.strip()]
+        prof_names = [_p_map.get(pid, f"ID:{pid}") for pid in prof_ids]
+        display_text = ",\n".join(prof_names) if prof_names else "<Nombre del profesor>"
+        prof_label.configure(text=display_text)
+
+    prof_entry.bind("<KeyRelease>", lambda e: (show_prof_suggestions(e), update_prof_label(e)))
+    prof_entry.bind("<FocusOut>", lambda e: (update_prof_label(e), hide_prof_suggestions(e)))
+
+    room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     room_entry.pack(pady=5)
     room_entry.insert(0, c_info[class_edit['key']]['aula'] if class_edit['key'] in c_info else l_info[class_edit['key']]['aula'])
 
     day_var = ctk.StringVar(value=class_edit['key'].split("_")[3])
     ctk.CTkOptionMenu(add_win,
                       values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-                      variable=day_var, state="disabled").pack(pady=5)
+                      variable=day_var, state="disabled", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
 
-    start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio")
+    start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     start_entry.pack(pady=5)
     start_entry.insert(0, class_edit['key'].split("_")[1])
     start_entry.configure(state="disabled")
 
-    duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración")
+    duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     duration_entry.pack(pady=5)
     duration_entry.insert(0, class_edit['key'].split("_")[2])
 
     type_var = ctk.StringVar(value="Teoría" if class_edit['key'] in c_info else "Laboratorio")
     ctk.CTkOptionMenu(add_win,
                       values=["Teoría", "Laboratorio"],
-                      variable=type_var, state="disabled").pack(pady=5)
+                      variable=type_var, state="disabled", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
 
-    group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)")
+    group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     group_entry.pack(pady=5)
     group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))    
 
@@ -1011,8 +1155,8 @@ def open_edit_class_window():
         add_win.destroy()
 
     # --- Bind Save and Cancel ---
-    ctk.CTkButton(add_win, text="Guardar", command=save_class).pack(pady=20)
-    ctk.CTkButton(add_win, text="Cancelar", command=cancel_edit).pack(pady=5)
+    ctk.CTkButton(add_win, text="Guardar", command=save_class, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=20)
+    ctk.CTkButton(add_win, text="Cancelar", command=cancel_edit, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=5)
 
     add_win.transient(window)
     add_win.grab_set()
@@ -1043,7 +1187,18 @@ def delete_selected_class():
     key = class_edit['key']
     group = c_info[key]['grupo'] if key in c_info else l_info[key]['grupo'] if key in l_info else None
     ids_to_delete = c_info[key]['id'] if key in c_info else l_info[key]['id'] if key in l_info else None
-    cell_name = f"{c_info[key]['nombre']}\n{group}" if key in c_info else f"{l_info[key]['nombre']}\n{group}"
+    temp = key.split("_")
+    nombre = temp[0]
+    inicio = temp[1]
+    duracion = temp[2]
+    # temp[3] es el día, pero no se usa en el widget
+    aula = temp[4]
+
+    # Obtén el grupo como lista
+    grupo = c_info[key]['grupo'] if key in c_info else l_info[key]['grupo'] if key in l_info else None
+
+    # Construye el cell_name igual al texto del widget
+    cell_name = f"{nombre}\n{grupo}_{inicio}_{duracion}_{aula}"
     print(cell_name)
     print("----------------------------------------")
     if key:
@@ -1057,8 +1212,12 @@ def delete_selected_class():
         # Remove from UI
         for widget in window.winfo_children():
             if widget in lbs_ids:
-                print(f'Widget text: {widget.cget("text")}')
-                if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
+                print('----------------------------------------')
+                print(f'Widget text: {widget.course_key}')
+                print(f'key: {key}')
+                print(f'cell_name: {cell_name}')
+                print('----------------------------------------')
+                if isinstance(widget, ctk.CTkLabel) and hasattr(widget, "course_key") and widget.course_key == cell_name:
                     lbs_ids.remove(widget) ##< Remove the label id from the list
                     widget.destroy()
                     break
@@ -1067,6 +1226,10 @@ def delete_selected_class():
         for id in ids_to_delete:
             deleted_keys.append(id)
         print(deleted_keys)
+
+        print(f"Intentando borrar key: {key}")
+        print(f"Claves en c_info: {list(c_info.keys())}")
+        print(f"Claves en l_info: {list(l_info.keys())}")
 
         # Remove from data dictionaries
         if key in c_info:
@@ -1124,54 +1287,57 @@ def export_to_excel():
         
         # Process each course and format data according to requirements
         excel_data = []
+        # set for evit duplicates in case of multiple teoric courses with same professor
+        teoricos_exportados = set()
+        con = 0
         for course in courses_list:
-            # Process professor IDs list - convert to "|" separated string
-            cedulas = "|".join(str(pid) for pid in course.profesor) if course.profesor else ""
-            
-            # Look up professor names from the profesor list
-            profesor_names = []
-            catedra_status = []
-            for prof_id in course.profesor:
-                prof = professors_map.get(prof_id)
-                if prof:
-                    profesor_names.append(prof.nombre)
-                    catedra_status.append("SI" if prof.catedra else "NO")
+            for idx, prof_id in enumerate(course.profesor):
+                clave = (prof_id, course.facultad, course.dependencia, course.materia)
+                if idx == 0:
+                    if con < 5:
+                        print(f"clave: {clave}")
+                        print(f"teoricos_exportados: {teoricos_exportados}")
+                        con += 1
+                    if course.horas_teoricas != 0:
+                        if clave in teoricos_exportados:
+                            #print(clave)
+                            horas = 0
+                        else:
+                            teoricos_exportados.add(clave)
+                            horas = course.horas_teoricas
+                            #print(f"Curso: {course.nombre}, teoria, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
+                    elif course.horas_practicas != 0:
+                        horas = course.horas_practicas
+                        # print(f"Curso: {course.nombre}, lab, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
+                    elif course.horas_tp != 0:
+                        horas = course.horas_tp
+                        # print(f"Curso: {course.nombre}, tp, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
+                    else:
+                        horas = 0
                 else:
-                    profesor_names.append(f"ID:{prof_id}")
-                    catedra_status.append("NO")
-            
-            profesor_str = "|".join(profesor_names)
-            catedra_str = "|".join(catedra_status)
-            
-            # Determine which hours field to use (first non-zero value)
-            horas = 0
-            if course.horas_teoricas != 0:
-                horas = course.horas_teoricas
-            elif course.horas_practicas != 0:
-                horas = course.horas_practicas
-            elif course.horas_tp != 0:
-                horas = course.horas_tp
-            
-            # Get cupo value - check if it exists in the model, otherwise set to empty or 0
-            cupo = getattr(course, 'cupo', 0)
-            
-            # Create row for Excel with proper column order
-            row = {
-                'Nivel': course.nivel,
-                'Facultad': course.facultad,
-                'Dependencia': course.dependencia,
-                'Materia': course.materia,
-                'Nombre': course.nombre,
-                'Grupo': course.grupo,
-                'Cupo': cupo,
-                'Aula': course.aula,
-                'Horario': course.horario,
-                'Cédula': cedulas,
-                'Profesor': profesor_str,
-                'Cátedra': catedra_str,
-                'Horas': horas
-            }
-            excel_data.append(row)
+                    horas = 0  # Los demás profesores no reciben horas en este registro
+
+                prof = professors_map.get(prof_id)
+                profesor_nombre = prof.nombre if prof else f"ID:{prof_id}"
+                catedra_str = "SI" if prof and prof.catedra else "NO"
+                cupo = getattr(course, 'cupo', 0)
+
+                row = {
+                    'Nivel': course.nivel,
+                    'Facultad': course.facultad,
+                    'Dependencia': course.dependencia,
+                    'Materia': course.materia,
+                    'Nombre': course.nombre,
+                    'Grupo': course.grupo,
+                    'Cupo': cupo,
+                    'Aula': course.aula,
+                    'Horario': course.horario,
+                    'Cédula': prof_id,
+                    'Profesor': profesor_nombre,
+                    'Cátedra': catedra_str,
+                    'Horas': horas
+                }
+                excel_data.append(row)
         
         # Create DataFrame with proper column order
         columns_order = ['Nivel', 'Facultad', 'Dependencia', 'Materia', 'Nombre', 
@@ -1234,48 +1400,54 @@ export_button.place(x=int(screen_width*(14/15)), y=single_height*16)
 def add_professor():
     add_win = Toplevel(window)
     add_win.title("Nuevo Profesor")
-    add_win.geometry("700x500")
+    add_win.geometry("700x600")
+
+    # Define larger fonts for the dialog
+    DIALOG_FONT = ("Arial", 18)
+    DIALOG_BUTTON_FONT = ("Arial", 17, "bold")
+    DIALOG_ENTRY_WIDTH = 320
+    DIALOG_ENTRY_HEIGHT = 40
 
     # --- Form Fields ---
-    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre del Profesor")
+    name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre del Profesor", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     name_entry.pack(pady=20)
 
-    id_entry = ctk.CTkEntry(add_win, placeholder_text="ID del Profesor")
+    id_entry = ctk.CTkEntry(add_win, placeholder_text="ID del Profesor", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     id_entry.pack(pady=5)
 
-    email_entry = ctk.CTkEntry(add_win, placeholder_text="Email del Profesor", width=200)
+    email_entry = ctk.CTkEntry(add_win, placeholder_text="Email del Profesor", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     email_entry.pack(pady=5)
 
     cathedra_var = ctk.BooleanVar()
-    cathedra_check = ctk.CTkCheckBox(add_win, text="¿Es cátedra?", variable=cathedra_var)
+    cathedra_check = ctk.CTkCheckBox(add_win, text="¿Es cátedra?", variable=cathedra_var, font=DIALOG_FONT)
     cathedra_check.pack(pady=5)
 
     hiring_var = ctk.StringVar(value="NO ESPECIFICADO")
     ctk.CTkOptionMenu(add_win, values=["NO ESPECIFICADO","OCASIONAL","PLANTA","CÁTEDRA","CÁTEDRA CALENDARIO"],
-                      variable=hiring_var, width=100).pack(pady=5)
+                      variable=hiring_var, width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
     
     education_var = ctk.StringVar(value="NO ESPECIFICADO")
     ctk.CTkOptionMenu(add_win, values=["NO ESPECIFICADO", "PREGRADO", "MAESTRÍA", "DOCTORADO", "ESPECIALIZACIÓN"],
-                      variable=education_var, width=100).pack(pady=5)
+                      variable=education_var, width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
 
 
     # --- Save Handler ---
     def save_professor():
 
         prof = Professor(
-            name = name_entry.get().strip(),
-            id_number = int(id_entry.get().strip()),
-            email = email_entry.get().strip(),
-            cathedra = bool(cathedra_var.get()),
-            hiring = hiring_var.get(),
-            education = education_var.get()
+            nombre = name_entry.get().strip().upper(),
+            identificacion = int(id_entry.get().strip()),
+            correo = email_entry.get().strip(),
+            catedra = bool(cathedra_var.get()),
+            contratacion = hiring_var.get(),
+            formacion = education_var.get()
         )
 
-        if name:
+        if prof.nombre:
             addProfessorToDB(supabase_instance, prof)
             add_win.destroy()
 
-    ctk.CTkButton(add_win, text="Guardar", command=save_professor).pack(pady=20)
+    ctk.CTkButton(add_win, text="Guardar", command=save_professor, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=20)
 
 # Button for adding a new professor
 add_prof_button = ctk.CTkButton(window, 
