@@ -18,7 +18,7 @@ import customtkinter as ctk
 
 from professor import Professor
 from dnd import *
-from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db, addProfessorToDB
+from courses_functions import connectSQL, retrieveDBTable, getClassesList, getProfessorsData, update_schedule_in_db, delete_class_in_db, addProfessorToDB, recalculate_hours_after_widget_removal
 
 supabase_instance = connectSQL() ##< Connect to the database
 courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
@@ -152,6 +152,7 @@ class_edit = {"key": None}
 classes_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 labs_edited_keys = [] ##< Initialize the list of classes and labs edited keys
 deleted_keys = [] ##< Initialize the list of classes and labs deleted keys
+horas_eliminadas_por_id = {}  # id (int) -> horas eliminadas (int)
 
 ##
 # @brief Add classes and labs to the schedule grid
@@ -170,25 +171,81 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
     labels_ids = [] ##< Initialize the list of labels ids
     # Add classes (rooms) to schedule
     i = 0 ##< Initialize the index for xlimit
-    for day in classes: ##< Iterate over the classes
+    print(f"Este es classes: {classes}")
+    week_days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+
+    # DEBUG: Print what we receive
+    print("\n=== DEBUG add_classes_labs ===")
+    for i, day in enumerate(classes):
+        if day:
+            print(f"  classes[{week_days[i]}]: {day}")
+    for i, day in enumerate(labs):
+        if day:
+            print(f"  labs[{week_days[i]}]: {day}")
+    print(f"  cl_information_label keys: {list(cl_information_label.keys())}")
+    print(f"  lb_information_label keys: {list(lb_information_label.keys())}")
+    print("=== END DEBUG ===\n")
+
+    def make_widget_key(info, tipo_suffix):
+        """Build widget_key consistently: codigo_sortedUniqueGroups_tipo"""
+        codigo = info['codigo']
+        grupos_str = "-".join(str(g) for g in sorted(set(info['grupo'])))
+        return f"{codigo}_{grupos_str}_{tipo_suffix}"
+
+    def build_widget_to_base_map(info_dict, tipo_suffix):
+        wmap = {}
+        for key_base, info in info_dict.items():
+            widget_key = make_widget_key(info, tipo_suffix)
+            day_idx = week_days.index(info['dia'])
+            wmap[(widget_key, day_idx)] = key_base
+        return wmap
+    cl_widget_map = build_widget_to_base_map(cl_information_label, "0")
+    lb_widget_map = build_widget_to_base_map(lb_information_label, "1")
+
+    # DEBUG: Print the maps
+    print("\n=== DEBUG widget maps ===")
+    for k, v in cl_widget_map.items():
+        print(f"  cl_map: {k} -> {v}")
+    for k, v in lb_widget_map.items():
+        print(f"  lb_map: {k} -> {v}")
+    print("=== END DEBUG maps ===\n")
+
+    for i, day in enumerate(classes): ##< Iterate over the classes
         for cl in day:
+            key_base = cl_widget_map.get((cl, i))
+            if not key_base:
+                print(f"No se encontró key_base para widget_key: {cl} en día {i}")
+                continue
+            info = cl_information_label[key_base]
+            if not info:
+                print(f"No se encontró info para key: {cl}")
+                continue
+            #day_name = week_days[i]
+            print("--------------------------------------------------------------------") 
+            print("--------------------------------------------------------------------") 
 
-            temp = cl.split("_") ##< Split the string to get the class name and hours
-            c_name = temp[0].split("\n")[0]
-            c_st_hour = int(temp[1])
-            c_duration = int(temp[2])
-            c_room = temp[3]
+            c_name = info['nombre']
+            c_st_hour = int(info['hora_inicio'])
+            c_duration = int(info['duracion'])
+            c_room = info['aula']
+            codigo = info['codigo']
+            grupos = info['grupo']
 
-            if c_name not in class_colors_dict: ##< Check if the class is not already in the dictionary
-                class_colors_dict[c_name] = colors[colors_idx] ##< Add the class to the dictionary with the color
-                colors_idx += 1 ##< Increment the index for the colors
+            unique_grupos = sorted(set(grupos))
+            cl_key = cl
+
+            if c_name not in class_colors_dict:
+                class_colors_dict[c_name] = colors[colors_idx]
+                colors_idx += 1
+
+            widget_text = f"{c_name}\n{unique_grupos}"
 
             dnd_label(window=window,
                         image=pixel,
                         geometry_width=screen_width,
                         geometry_height=screen_height,
                         lab_disp=0,
-                        text=temp[0],
+                        text=widget_text,
                         bg_color=class_colors_dict[c_name],
                         w=single_width,
                         h=(c_duration*single_height),
@@ -201,29 +258,45 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         cl_info=cl_information_label,
                         proffs_info=professors_information,
                         cell_to_edit=class_edit,
-                        c_edited=classes_edited_keys) ##< Create the drag&drop label for the class
+                        c_edited=classes_edited_keys,
+                        initial_key=key_base) ##< Create the drag&drop label for the class
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
-            labels_ids[-1].course_key = cl  # cl es el key único de la clase/lab, se asigna como atributo del widget para facilitar su identificación al editar/eliminar
+            labels_ids[-1].course_key = cl_key  # cl es el key único de la clase/lab, se asigna como atributo del widget para facilitar su identificación al editar/eliminar
         i+=1 ##< Increment the index for xlimit by 1
 
     # Add labs to schedule
-    i = 0 ##< Initialize the index for xlimit
-    for day in labs: ##< Iterate over the labs
+    week_days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    #i = 0 ##< Initialize the index for xlimit
+    for i, day in enumerate(labs): ##< Iterate over the labs
         for cl in day:
+            key_base = lb_widget_map.get((cl, i))
+            if not key_base:
+                print(f"No se encontró key_base para widget_key lab: {cl} en día {i}")
+                continue
+            info = lb_information_label[key_base]
+            c_name = info['nombre']
+            c_st_hour = int(info['hora_inicio'])
+            c_duration = int(info['duracion'])
+            c_room = info['aula']
+            codigo = info['codigo']
+            grupos = info['grupo']
 
-            temp = cl.split("_") ##< Split the string to get the lab name and hours
-            c_name = temp[0].split("\n")[0]
-            c_st_hour = int(temp[1])
-            c_duration = int(temp[2])
-            c_room = temp[3]
+            unique_grupos = sorted(set(grupos))
+            cl_key = cl
+
+            if c_name not in class_colors_dict:
+                class_colors_dict[c_name] = colors[colors_idx]
+                colors_idx += 1
+
+            widget_text = f"{c_name}\n{unique_grupos}"
 
             dnd_label(window=window,
                         image=pixel,
                         geometry_width=screen_width,
                         geometry_height=screen_height,
                         lab_disp=lab_displacement,
-                        text=temp[0],
+                        text=widget_text,
                         bg_color=class_colors_dict[c_name],
                         w=single_width,
                         h=(c_duration*single_height),
@@ -236,11 +309,12 @@ def add_classes_labs(classes, labs, cl_information_label, lb_information_label, 
                         cl_info=lb_information_label,
                         proffs_info=professors_information,
                         cell_to_edit=class_edit,
-                        c_edited=labs_edited_keys) ##< Create the drag&drop label for the lab
+                        c_edited=labs_edited_keys,
+                        initial_key=key_base) ##< Create the drag&drop label for the lab
 
             labels_ids.append(window.winfo_children()[-1]) ##< Append the label id to the list
-            labels_ids[-1].course_key = cl  # cl es el key único de la clase/lab
-        i+=1 ##< Increment the index for xlimit by 1
+            labels_ids[-1].course_key = cl_key  # cl es el key único de la clase/lab
+        #i+=1 ##< Increment the index for xlimit by 1
 
     return labels_ids ##< Return the list of labels ids
 
@@ -267,14 +341,21 @@ def change_level():
 
     courses_list = retrieveDBTable(supabase_instance, "materias") ##< Connect to the database and get the data as Course objects
 
-    # Destroy all dnd_labels
+    """# Destroy all dnd_labels
     for widget in window.winfo_children():
         if len(lbs_ids) == 0:
             break
         if isinstance(widget, ctk.CTkLabel):
             if widget == lbs_ids[0]:
                 lbs_ids.remove(widget) ##< Remove the label id from the list
-                widget.destroy()
+                widget.destroy()"""
+    
+    for widget in lbs_ids:
+        widget.destroy()
+    lbs_ids.clear()
+
+    # IMPORTANT: Clear slot occupancy from the previous level
+    clear_slot_occupancy()
 
     # Add classes and labs to the schedule based on the selected level
     if opt.get() == "Nivel 1":
@@ -785,7 +866,11 @@ def open_add_class_window():
             print(f"Adding entry: {name}, {fac}, {dep}, {mat}, Prof: {professor_list}, Room: {entry_room}, Day: {entry_day}, Start: {entry_start}, Dur: {entry_dur}, Type: {entry_type}, Group: {group_list}")
 
             is_lab = (entry_type == "Laboratorio")
-            key = f"{name}_{entry_start}_{entry_dur}_{entry_day}_{entry_room}"
+            codigo = f"{fac}{dep}{mat}"
+            grupos_str = "-".join(str(g) for g in sorted(set(group_list)))
+            tipo = "1" if is_lab else "0"
+            key = f"{codigo}_{grupos_str}_{tipo}"
+            #key = f"{name}_{entry_start}_{entry_dur}_{entry_day}_{entry_room}"
             info_dict = {
                 "id": [0],
                 "nivel": int(opt.get().split(" ")[1]),
@@ -796,7 +881,10 @@ def open_add_class_window():
                 "codigo": f"{fac}{dep}{mat}",
                 "profesor": professor_list,
                 "grupo": group_list,
-                "aula": entry_room
+                "aula": entry_room,
+                "hora_inicio": entry_start,
+                "duracion": entry_dur,
+                "dia": entry_day,
             }
 
             if is_lab:
@@ -828,6 +916,7 @@ def open_add_class_window():
                       c_edited=labs_edited_keys if is_lab else classes_edited_keys)
 
             lbs_ids.append(window.winfo_children()[-1])
+            lbs_ids[-1].course_key = key
 
         add_win.destroy()
 
@@ -855,8 +944,14 @@ add_button.place(x=int(screen_width*(14/15)), y=single_height*8) ##< Set the pos
 #
 # @note Clears classes_edited_keys, labs_edited_keys, and deleted_keys after saving
 def update_database():
+    print("----------------------------------------------------------")
+    print("----------------------------------------------------------")
+    print("----------------------------------------------------------")
+    print(f"clases editadas: {classes_edited_keys}")
+    print(f"labs editados: {labs_edited_keys}")
     update_schedule_in_db(supabase_instance, c_info, classes_edited_keys, False) ##< Function to update the database with the current schedule
     update_schedule_in_db(supabase_instance, l_info, labs_edited_keys, True) ##< Function to update the database with the current schedule
+    #recalculate_hours_after_widget_removal(supabase_instance, horas_eliminadas_por_id) ##< Function to recalculate the professors' load based on the updated schedule
     delete_class_in_db(supabase_instance, deleted_keys) ##< Function to delete the selected classes and labs from the database
     classes_edited_keys.clear() ##< Clear the list of classes edited keys
     labs_edited_keys.clear() ##< Clear the list of labs edited keys
@@ -886,20 +981,54 @@ update_button.place(x=int(screen_width*(14/15)), y=single_height*10)
 # @note Requires class_edit['key'] to be set to a valid course key
 # @note Updates c_info or l_info dictionaries with modified course information
 def open_edit_class_window():
+    def find_all_key_bases(widget_key, info_dict, tipo_suffix):
+        """
+        widget_key: group_type_code
+        info_dict keys: day_classroom_type_hour_code (old format)
+        """
+        found = []
+        parts = widget_key.rsplit("_", 1)
+        if len(parts) != 2:
+            return found
+        tipo = parts[1]
+        if tipo != tipo_suffix:
+            return found
+        for k, v in info_dict.items():
+            codigo = v['codigo']
+            grupos_str = "-".join(str(g) for g in sorted(set(v['grupo'])))
+            expected = f"{codigo}_{grupos_str}_{tipo_suffix}"
+            if expected == widget_key:
+                found.append(k)
+        return found
+
+    widget_key = class_edit['key']
+    if not widget_key:
+        print("No hay clase seleccionada para editar.")
+        return
+
+    found_keys_class = find_all_key_bases(widget_key, c_info, "0")
+    found_keys_lab = find_all_key_bases(widget_key, l_info, "1")
+
+    is_lab = len(found_keys_lab) > 0 and len(found_keys_class) == 0
+
+    if found_keys_class:
+        edit_info = c_info[found_keys_class[0]]
+    elif found_keys_lab:
+        edit_info = l_info[found_keys_lab[0]]
+    else:
+        print(f"No se encontró info para key: {widget_key}")
+        return
+
     add_win = Toplevel(window)
     add_win.title("Edit Class")
     add_win.geometry("600x800")
-    # Define larger fonts for the dialog
     DIALOG_FONT = ("Arial", 16)
     DIALOG_LABEL_FONT = ("Arial", 14)
     DIALOG_BUTTON_FONT = ("Arial", 15, "bold")
     DIALOG_ENTRY_WIDTH = 300
     DIALOG_ENTRY_HEIGHT = 38
 
-    # Get all courses data for search
     all_professors_list = retrieveDBTable(supabase_instance, "profesores")
-
-    # Build professor mapping for suggestions
     p_info = getProfessorsData(supabase_instance)
 
     def _build_prof_map(prof_data):
@@ -924,54 +1053,41 @@ def open_edit_class_window():
         
     _p_map = _build_prof_map(p_info)    
 
-    # --- Form Fields ---
+    # --- Form Fields using edit_info ---
     name_entry = ctk.CTkEntry(add_win, placeholder_text="Nombre", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     name_entry.pack(pady=5)
-    name_entry.insert(0, c_info[class_edit['key']]['nombre'] if class_edit['key'] in c_info else l_info[class_edit['key']]['nombre'])
+    name_entry.insert(0, edit_info['nombre'])
 
-     # --- Row for code entries ---
     row_code_frame = ctk.CTkFrame(add_win, fg_color="transparent")
     row_code_frame.pack(pady=5)
 
     fac_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Facultad", width=70, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     fac_entry.pack(padx=5, side=LEFT)
-    fac_entry.insert(0, c_info[class_edit['key']]['facultad'] if class_edit['key'] in c_info else l_info[class_edit['key']]['facultad'])
+    fac_entry.insert(0, edit_info['facultad'])
     fac_entry.configure(state="disabled")
 
     dep_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Dependencia", width=90, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     dep_entry.pack(padx=5, side=LEFT)
-    dep_entry.insert(0, c_info[class_edit['key']]['dependencia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['dependencia'])
+    dep_entry.insert(0, edit_info['dependencia'])
     dep_entry.configure(state="disabled")   
 
     mat_entry = ctk.CTkEntry(row_code_frame, placeholder_text="Materia", width=60, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     mat_entry.pack(padx=5, side=LEFT)
-    mat_entry.insert(0, c_info[class_edit['key']]['materia'] if class_edit['key'] in c_info else l_info[class_edit['key']]['materia'])
+    mat_entry.insert(0, edit_info['materia'])
     mat_entry.configure(state="disabled")
 
-    # mapping for edit window (same as above; extend as needed)
     _fac_map = {"25": "Ingeniería"}
     _dep_map = {"98": "Electrónica"}
 
-    # --- Row for code labels ---
     row_code_labels_frame = ctk.CTkFrame(add_win, fg_color="transparent", height=30, width=400)
     row_code_labels_frame.pack(pady=2)
 
-    fac_label = ctk.CTkLabel(row_code_labels_frame, text="<Facultad>", font=DIALOG_LABEL_FONT)
+    fac_label = ctk.CTkLabel(row_code_labels_frame, text=_fac_map.get(str(edit_info['facultad']), "<Facultad>"), font=DIALOG_LABEL_FONT)
     fac_label.pack(padx=10, side=LEFT)
 
-    dep_label = ctk.CTkLabel(row_code_labels_frame, text="<Dependencia>", font=DIALOG_LABEL_FONT)
+    dep_label = ctk.CTkLabel(row_code_labels_frame, text=_dep_map.get(str(edit_info['dependencia']), "<Dependencia>"), font=DIALOG_LABEL_FONT)
     dep_label.pack(padx=5, side=LEFT)
 
-    def _update_code_labels_edit(event=None):
-        f = fac_entry.get().strip()
-        d = dep_entry.get().strip()
-        fac_label.configure(text=_fac_map.get(f, "<Facultad>"))
-        dep_label.configure(text=_dep_map.get(d, "<Dependencia>"))
-
-    # entries are disabled in edit window; just set labels once
-    _update_code_labels_edit()
-
-    # --- Row for professor ID and name ---
     row_prof_frame = ctk.CTkFrame(add_win, fg_color="transparent", height=80, width=400)
     row_prof_frame.pack(pady=5)
 
@@ -980,66 +1096,49 @@ def open_edit_class_window():
 
     prof_entry = ctk.CTkEntry(prof_column, placeholder_text="ID del Profesor", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     prof_entry.pack()
-    prof_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['profesor'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['profesor'])))
+    prof_entry.insert(0, ", ".join(map(str, edit_info['profesor'])))
 
     prof_label = ctk.CTkLabel(prof_column, text="<Nombre del profesor>", font=DIALOG_LABEL_FONT)
     prof_label.pack(pady=(2, 0))
 
-    # Professor suggestion listbox
     prof_suggestion_listbox = None
 
     def show_prof_suggestions(event=None):
         nonlocal prof_suggestion_listbox
         full_text = prof_entry.get()
-        
-        # Get the current professor being typed (after last comma)
         if ',' in full_text:
             search_text = full_text.split(',')[-1].strip()
         else:
             search_text = full_text.strip()
-        
-        # Close existing listbox if present
         if prof_suggestion_listbox:
             prof_suggestion_listbox.destroy()
             prof_suggestion_listbox = None
-        
         if not search_text:
             return
-        
-        # Filter professors based on search
-        matches = []
-        for prof_id, prof_name in _p_map.items():
-            if search_text.lower() in prof_id.lower() or search_text.lower() in prof_name.lower():
-                matches.append((prof_id, prof_name))
-        
+        matches = [(pid, pname) for pid, pname in _p_map.items() if search_text.lower() in pid.lower() or search_text.lower() in pname.lower()]
         if matches:
             prof_suggestion_listbox = Listbox(prof_column, height=min(5, len(matches)), width=30, font=DIALOG_FONT)
             prof_suggestion_listbox.pack()
-            
-            for prof_id, prof_name in matches[:10]:
-                prof_suggestion_listbox.insert(END, f"{prof_id} - {prof_name}")
-            
+            for pid, pname in matches[:10]:
+                prof_suggestion_listbox.insert(END, f"{pid} - {pname}")
             def select_prof_suggestion(event):
                 nonlocal prof_suggestion_listbox
                 selection = prof_suggestion_listbox.curselection()
                 if selection:
                     selected = prof_suggestion_listbox.get(selection[0])
-                    prof_id = selected.split(" - ")[0]
-                    
+                    pid = selected.split(" - ")[0]
                     full_text = prof_entry.get()
                     if ',' in full_text:
-                        existing_profs = ','.join(full_text.split(',')[:-1])
-                        new_text = f"{existing_profs}, {prof_id}"
+                        existing = ','.join(full_text.split(',')[:-1])
+                        new_text = f"{existing}, {pid}"
                     else:
-                        new_text = prof_id
-                    
+                        new_text = pid
                     prof_entry.delete(0, END)
                     prof_entry.insert(0, new_text)
                     update_prof_label()
                 if prof_suggestion_listbox:
                     prof_suggestion_listbox.destroy()
                     prof_suggestion_listbox = None
-            
             prof_suggestion_listbox.bind("<<ListboxSelect>>", select_prof_suggestion)
             prof_suggestion_listbox.bind("<Double-Button-1>", select_prof_suggestion)
 
@@ -1052,45 +1151,41 @@ def open_edit_class_window():
         if not full_text:
             prof_label.configure(text="<Nombre del profesor>")
             return
-        
         prof_ids = [p.strip() for p in full_text.split(',') if p.strip()]
         prof_names = [_p_map.get(pid, f"ID:{pid}") for pid in prof_ids]
-        display_text = ",\n".join(prof_names) if prof_names else "<Nombre del profesor>"
-        prof_label.configure(text=display_text)
+        prof_label.configure(text=",\n".join(prof_names) if prof_names else "<Nombre del profesor>")
 
     prof_entry.bind("<KeyRelease>", lambda e: (show_prof_suggestions(e), update_prof_label(e)))
     prof_entry.bind("<FocusOut>", lambda e: (update_prof_label(e), hide_prof_suggestions(e)))
 
     room_entry = ctk.CTkEntry(add_win, placeholder_text="Aula", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
-    room_entry.pack(pady=5)
-    room_entry.insert(0, c_info[class_edit['key']]['aula'] if class_edit['key'] in c_info else l_info[class_edit['key']]['aula'])
+    room_entry.pack(pady=5)   
+    room_entry.insert(0, edit_info['aula'])
 
-    day_var = ctk.StringVar(value=class_edit['key'].split("_")[3])
-    ctk.CTkOptionMenu(add_win,
-                      values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+    day_var = ctk.StringVar(value=edit_info['dia'])
+    ctk.CTkOptionMenu(add_win, values=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
                       variable=day_var, state="disabled", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
 
     start_entry = ctk.CTkEntry(add_win, placeholder_text="Hora de Inicio", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     start_entry.pack(pady=5)
-    start_entry.insert(0, class_edit['key'].split("_")[1])
+    start_entry.insert(0, str(edit_info['hora_inicio']))
     start_entry.configure(state="disabled")
 
     duration_entry = ctk.CTkEntry(add_win, placeholder_text="Duración", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     duration_entry.pack(pady=5)
-    duration_entry.insert(0, class_edit['key'].split("_")[2])
+    duration_entry.insert(0, str(edit_info['duracion']))
 
-    type_var = ctk.StringVar(value="Teoría" if class_edit['key'] in c_info else "Laboratorio")
-    ctk.CTkOptionMenu(add_win,
-                      values=["Teoría", "Laboratorio"],
+    type_var = ctk.StringVar(value="Laboratorio" if is_lab else "Teoría")
+    ctk.CTkOptionMenu(add_win, values=["Teoría", "Laboratorio"],
                       variable=type_var, state="disabled", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT).pack(pady=5)
 
     group_entry = ctk.CTkEntry(add_win, placeholder_text="Grupo(s)", width=DIALOG_ENTRY_WIDTH, height=DIALOG_ENTRY_HEIGHT, font=DIALOG_FONT)
     group_entry.pack(pady=5)
-    group_entry.insert(0, ", ".join(map(str, c_info[class_edit['key']]['grupo'])) if class_edit['key'] in c_info else ", ".join(map(str, l_info[class_edit['key']]['grupo'])))    
+    # Show unique sorted groups
+    unique_edit_grupos = sorted(set(edit_info['grupo']))
+    group_entry.insert(0, ", ".join(map(str, unique_edit_grupos)))
 
-    # --- Save Handler ---
     def save_class():
-        # print("Saving class...")
         global p_info, classes_edited_keys, labs_edited_keys
         name = name_entry.get()
         fac = fac_entry.get()
@@ -1098,63 +1193,72 @@ def open_edit_class_window():
         mat = mat_entry.get()
         professor = [int(p.strip()) for p in prof_entry.get().split(",")] if "," in prof_entry.get() else [int(prof_entry.get())]
         room = room_entry.get()
-        day = day_var.get()
-        start_hour = int(start_entry.get())
         duration = int(duration_entry.get())
-        is_lab = (type_var.get() == "Laboratorio")
+        is_lab_save = (type_var.get() == "Laboratorio")
         group = [int(g.strip()) for g in group_entry.get().split(",")] if "," in group_entry.get() else [int(group_entry.get())]
 
-        # Update data dictionary
-        old_key = class_edit['key']
-        print(f"Old key: {old_key}")
-        new_key = f"{name}_{start_hour}_{duration}_{day}_{room}"
-        info_dict = {
-            "id": l_info[old_key]['id'] if old_key in l_info else c_info[old_key]['id'],
-            "nombre": name,
-            "facultad": fac,
-            "dependencia": dep,
-            "materia": mat,
-            "codigo": f"{fac}{dep}{mat}",
-            "profesor": professor,
-            "grupo": group,
-            "aula": room
-        }
+        codigo = f"{fac}{dep}{mat}"
+        grupos_str = "-".join(str(g) for g in sorted(set(group)))
+        tipo = "1" if is_lab_save else "0"
+        new_widget_key = f"{codigo}_{grupos_str}_{tipo}"
 
-        cell_name = f"{c_info[old_key]['nombre']}\n{c_info[old_key]['grupo']}" if old_key in c_info else f"{l_info[old_key]['nombre']}\n{l_info[old_key]['grupo']}"
+        all_found = found_keys_lab if is_lab_save else found_keys_class
+        target_dict = l_info if is_lab_save else c_info
+        edited_list = labs_edited_keys if is_lab_save else classes_edited_keys
 
-        for widget in window.winfo_children():
-            if widget in lbs_ids:
-                print(f'Widget text: {widget.cget("text")}')
-                if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == cell_name:
-                    #Change label text
-                    widget.configure(text=f"{name}\n{group}")
-                    break
+        keys_to_delete = []
+        entries_to_add = []
 
-        if is_lab:
-            if old_key in l_info:
-                del l_info[old_key]
-        else:
-            if old_key in c_info:
-                del c_info[old_key]
-
-        # Add the new entry
-        if is_lab:
-            l_info[new_key] = info_dict
-            labs_edited_keys.append(new_key)
-        else:
-            c_info[new_key] = info_dict
-            classes_edited_keys.append(new_key)
+        for fk in all_found:
+            old_info = target_dict[fk]
+            # Keep the old format for the c_info/l_info key
+            # because on_release and update_schedule_in_db use it this way
+            new_base_key = f"{codigo}_{old_info['hora_inicio']}_{duration}_{old_info['dia']}_{room}_{tipo}"
         
-        class_edit['key'] = new_key
+            info_dict = {
+                    "id": old_info['id'],
+                    "nombre": name,
+                    "facultad": fac,
+                    "dependencia": dep,
+                    "materia": mat,
+                    "codigo": codigo,
+                    "codigos": old_info.get('codigos', [codigo]),
+                    "profesor": professor,
+                    "grupo": group,
+                    "aula": room,
+                    "hora_inicio": old_info['hora_inicio'],
+                    "duracion": duration,
+                    "dia": old_info['dia'],
+                    "nivel": old_info.get('nivel', 1)
+            }
+            keys_to_delete.append(fk)
+            entries_to_add.append((new_base_key, info_dict))
+            edited_list.append(new_base_key)
 
-        # Close the edit window
+        for fk in keys_to_delete:
+            del target_dict[fk]
+        for new_key, new_info in entries_to_add:
+            target_dict[new_key] = new_info
+
+        # Update widget in UI: search by course_key (old widget_key)
+        for widget_w in window.winfo_children():
+            if widget_w in lbs_ids:
+                if isinstance(widget_w, ctk.CTkLabel) and hasattr(widget_w, "course_key") and widget_w.course_key == widget_key:
+                    unique_g = sorted(set(group))
+                    widget_w.configure(text=f"{name}\n{unique_g}")
+                    widget_w.course_key = new_widget_key 
+                    # Update the dnd_label key_info so that on_press continues to function
+                    # Find the dnd_label that manages this widget  
+                    for child in window.winfo_children():
+                        if hasattr(child, 'key_info') and child is widget_w:
+                            child.key_info = entries_to_add[0][0] if entries_to_add else child.key_info
+        
+        class_edit['key'] = new_widget_key
         add_win.destroy()
 
-    # --- Cancel Handler ---
     def cancel_edit():
         add_win.destroy()
 
-    # --- Bind Save and Cancel ---
     ctk.CTkButton(add_win, text="Guardar", command=save_class, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=20)
     ctk.CTkButton(add_win, text="Cancelar", command=cancel_edit, font=DIALOG_BUTTON_FONT, height=42, width=250).pack(pady=5)
 
@@ -1183,62 +1287,127 @@ edit_button.place(x=int(screen_width*(14/15)), y=single_height*12)
 #
 # @note Updates global variables: class_edit, deleted_keys, c_info, l_info, lbs_ids
 def delete_selected_class():
-    global class_edit, deleted_keys
+    global class_edit, deleted_keys, horas_eliminadas_por_id
+    print(f"class_edit before deletion: {class_edit}")
     key = class_edit['key']
-    group = c_info[key]['grupo'] if key in c_info else l_info[key]['grupo'] if key in l_info else None
-    ids_to_delete = c_info[key]['id'] if key in c_info else l_info[key]['id'] if key in l_info else None
-    temp = key.split("_")
-    nombre = temp[0]
-    inicio = temp[1]
-    duracion = temp[2]
-    # temp[3] es el día, pero no se usa en el widget
-    aula = temp[4]
 
-    # Obtén el grupo como lista
-    grupo = c_info[key]['grupo'] if key in c_info else l_info[key]['grupo'] if key in l_info else None
+    if not key:
+        print("No hay clase seleccionada para eliminar.")
+        return
+    
+    # Looking for the original key in the info dictionaries to get the ID for deletion
+    def find_all_key_bases(widget_key, info_dict, tipo_suffix):
+        """
+        widget_key has the format: codigo_grupos_tipo (e.g., 2598521_8_1)
+        info_dict keys have the old format: codigo_hora_dur_dia_aula_tipo
+        We search for all entries in info_dict whose code+groups+type match.
+        """
+        found = []
+        # Extract code and type from widget_key
+        # format: {code}_{str_groups}_{type}
+        # where str_groups can be "1", "1-2", "1-2-3", etc.
+        parts = widget_key.rsplit("_", 1)  # split by the last "_" to get the type
+        if len(parts) != 2:
+            return found
+        codigo_grupos = parts[0]  # ej: "2598521_8" o "2598521_1-2"
+        tipo = parts[1]           # ej: "0" o "1"
+        
+        if tipo != tipo_suffix:
+            return found
 
-    # Construye el cell_name igual al texto del widget
-    cell_name = f"{nombre}\n{grupo}_{inicio}_{duracion}_{aula}"
-    print(cell_name)
-    print("----------------------------------------")
-    if key:
-        # for widget in window.winfo_children():
-        # if len(lbs_ids) == 0:
-        #     break
-        # if isinstance(widget, Label):
-        #     if widget == lbs_ids[0]:
-        #         lbs_ids.remove(widget) ##< Remove the label id from the list
-        #         widget.destroy()
-        # Remove from UI
-        for widget in window.winfo_children():
-            if widget in lbs_ids:
-                print('----------------------------------------')
-                print(f'Widget text: {widget.course_key}')
-                print(f'key: {key}')
-                print(f'cell_name: {cell_name}')
-                print('----------------------------------------')
-                if isinstance(widget, ctk.CTkLabel) and hasattr(widget, "course_key") and widget.course_key == cell_name:
-                    lbs_ids.remove(widget) ##< Remove the label id from the list
-                    widget.destroy()
-                    break
+        for k, v in info_dict.items():
+            codigo = v['codigo']
+            grupos_str = "-".join(str(g) for g in sorted(set(v['grupo'])))
+            expected_widget_key = f"{codigo}_{grupos_str}_{tipo_suffix}"
+            if expected_widget_key == widget_key:
+                found.append(k)
+        return found
+    
+    found_keys_class = find_all_key_bases(key, c_info, "0")
+    found_keys_lab = find_all_key_bases(key, l_info, "1")
 
-        # Mark as deleted
-        for id in ids_to_delete:
+    if not found_keys_class and not found_keys_lab:
+        print(f"No se encontró info para key: {key}")
+        return
+    
+    if found_keys_class:
+        for class_key in found_keys_class:
+            class_info_entry = c_info[class_key]
+            class_codigos = class_info_entry.get('codigos', [class_info_entry['codigo']])
+            class_grupos = set(class_info_entry['grupo'])
+            class_nivel = class_info_entry.get('nivel')
+
+            # Busca labs que compartan codigo, grupo y nivel con la clase
+            labs_asociados = []
+            for lab_key, lab_info_entry in list(l_info.items()):
+                lab_codigos = lab_info_entry.get('codigos', [lab_info_entry['codigo']])
+                lab_grupos = set(lab_info_entry['grupo'])
+                lab_nivel = lab_info_entry.get('nivel')
+                # Comparte algún codigo Y algún grupo Y mismo nivel
+                if (set(class_codigos) & set(lab_codigos) and
+                    class_grupos & lab_grupos and
+                    class_nivel == lab_nivel):
+                    labs_asociados.append(lab_key)
+
+            for lab_key in labs_asociados:
+                # Agregar IDs a deleted_keys
+                for id in l_info[lab_key]['id']:
+                    if id not in deleted_keys:
+                        deleted_keys.append(id)
+                # Marcar para que update_database lo procese
+                if lab_key not in labs_edited_keys:
+                    labs_edited_keys.append(lab_key)
+                # Eliminar widget de la UI
+                lab_widget_key = f"{l_info[lab_key]['codigo']}_{'- '.join(str(g) for g in sorted(set(l_info[lab_key]['grupo'])))}_1"
+                # Buscar usando course_key del widget
+                grupos_str = "-".join(str(g) for g in sorted(set(l_info[lab_key]['grupo'])))
+                lab_widget_key = f"{l_info[lab_key]['codigo']}_{grupos_str}_1"
+                for widget in list(window.winfo_children()):
+                    if (widget in lbs_ids and
+                        isinstance(widget, ctk.CTkLabel) and
+                        hasattr(widget, "course_key") and
+                        widget.course_key == lab_widget_key):
+                        lbs_ids.remove(widget)
+                        widget.destroy()
+                # Eliminar del diccionario
+                del l_info[lab_key]
+                print(f"Lab asociado eliminado: {lab_key}")
+    
+    # Collect all IDs to delete and mark keys as edited for proper database update
+    all_ids = []
+    for fk in found_keys_class:
+        all_ids.extend(c_info[fk]['id'])
+        del c_info[fk]
+    for fk in found_keys_lab:
+        all_ids.extend(l_info[fk]['id'])
+        del l_info[fk]
+
+    # Remove from UI
+    widgets_to_remove = []
+    for widget in window.winfo_children():
+        if widget in lbs_ids:
+            print('----------------------------------------')
+            print(f'Widget key: {widget.course_key}')
+            print(f'key: {key}')
+            print('----------------------------------------')
+            if isinstance(widget, ctk.CTkLabel) and hasattr(widget, "course_key") and widget.course_key == key:
+                widgets_to_remove.append(widget)
+
+    for widget in widgets_to_remove:
+        lbs_ids.remove(widget)
+        widget.destroy()
+
+    for id in all_ids:
+        if id not in deleted_keys:
             deleted_keys.append(id)
-        print(deleted_keys)
 
-        print(f"Intentando borrar key: {key}")
-        print(f"Claves en c_info: {list(c_info.keys())}")
-        print(f"Claves en l_info: {list(l_info.keys())}")
+    print(f"Intentando borrar key: {key}")
+    print(f"Claves en c_info: {list(c_info.keys())}")
+    print(f"Claves en l_info: {list(l_info.keys())}")
+    print(f"Diccionarios horas por ID antes de eliminación: {deleted_keys}")
 
-        # Remove from data dictionaries
-        if key in c_info:
-            del c_info[key]
-        if key in l_info:
-            del l_info[key]
-
-        # Clear selection
-        class_edit['key'] = None
+    # Clear selection
+    class_edit['key'] = None  
 
 delete_button = ctk.CTkButton(window,
                               text="Eliminar\nClase",
@@ -1463,3 +1632,19 @@ add_prof_button = ctk.CTkButton(window,
 add_prof_button.place(x=int(screen_width*(14/15)), y=single_height*18) ##< Set the position of the quit button
 
 window.mainloop() ##< Start the main loop of the window
+
+
+def consultar_grupo(grupo_num):
+    result = supabase_instance.table("materias").select("*").eq("grupo", grupo_num).execute()
+    print(f"Cursos del grupo {grupo_num}:")
+    for row in result.data:
+        print(row)
+
+if __name__ == "__main__":
+    consultar_grupo(1)
+
+
+
+
+
+

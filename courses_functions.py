@@ -46,7 +46,7 @@ def getClassSchedule(days_hours_string):
     class_duration = []
     for sch in days_hours_list:
         if sch != "":
-            if sch[1] not in days_dict:
+            """if sch[1] not in days_dict:
                 days.append(days_dict[sch[0]]) ##< Add the day to the list
                 start_hours.append(sch[1:].split("-")[0]) ##< Add the start hour to the list
                 class_duration.append(int(sch[1:].split("-")[1]) - int(sch[1:].split("-")[0])) ##< Add the class duration to the list
@@ -56,7 +56,19 @@ def getClassSchedule(days_hours_string):
                 start_hours.append(sch[2:].split("-")[0]) ##< Add the start hour to the list
                 start_hours.append(sch[2:].split("-")[0]) ##< Add the start hour to the list again for the second day
                 class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list
-                class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list again for the second day
+                class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list again for the second day"""
+            # Encuentra la parte de días (letras) y la parte de horas (números)
+            i = 0
+            while i < len(sch) and sch[i] in days_dict:
+                i += 1
+            dias = sch[:i]
+            horas = sch[i:]
+            start, end = horas.split("-")
+            dur = int(end) - int(start)
+            for d in dias:
+                days.append(days_dict[d])
+                start_hours.append(start)
+                class_duration.append(dur)
 
     return days, start_hours, class_duration
 
@@ -71,7 +83,7 @@ def getClassSchedule(days_hours_string):
 # @return Integer representing total number of hours, or 0 if parsing fails
 def getHoursLong(days_hours_string):
     try:
-        if "|" in days_hours_string: ##< Check if the string contains "|"
+        """if "|" in days_hours_string: ##< Check if the string contains "|"
             _, _, x = getClassSchedule(days_hours_string) ##< Get the class duration
             return int(sum(x)) ##< Return the total number of hours
         else:
@@ -80,7 +92,12 @@ def getHoursLong(days_hours_string):
                 x = days_hours_string[2:].split("-") ##< Split the string to get the start and end hours
             else:
                 x = days_hours_string[1:].split("-") ##< Split the string to get the start and end hours
-            return int(x[1]) - int(x[0]) ##< Return the difference between the end and start hours
+            return int(x[1]) - int(x[0]) ##< Return the difference between the end and start hours"""
+        _, _, x = getClassSchedule(days_hours_string)
+        print("--------------------------------------------------------------")
+        print(f"duracion: {x}")
+        print("--------------------------------------------------------------")
+        return int(sum(x))
     except:
         return 0 ##< Return 0 if there is an error in processing the string
 
@@ -167,61 +184,82 @@ def getClassesList(courses_list, semester):
         aula = course.aula
         
         for i in range(len(days)):
-            
-            key = f'{nombre}\n[{grupo}]_{st_hours[i]}_{class_duration[i]}_{aula}'
-            
-            key_info = f'{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}_{aula}'  # Unique key for class or lab info
-            
-            info = {
-                'id': [id],
-                'nombre': nombre,
-                'facultad': course.facultad,
-                'dependencia': course.dependencia,
-                'materia': course.materia,
-                'codigo': codigo,
-                'profesor': profesor,
-                'grupo': [grupo],
-                'aula': aula,
-                'nivel': course.nivel
-                # add more fields as needed
-            }
-            
-            if course.es_lab == False:  # If it's a class
-                if key_info in class_info_dict:
-                    # If the class already exists, update the info
-                    gr = class_info_dict[key_info]['grupo']
-                    old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
-
-                    gr.append(grupo)  # Append the new group to the existing one
-                    ids = class_info_dict[key_info]['id']
-                    ids.append(id)  # Append the new id to the existing one
-                    class_info_dict[key_info]['grupo'] = gr
-                    class_info_dict[key_info]['id'] = ids
-
-                    idx = classes_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
-                    new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
-                    classes_list[week_days.index(days[i])][idx] = new_key # Update the classes list with the new key
-                else:
-                    class_info_dict[key_info] = info
-                    classes_list[week_days.index(days[i])].append(key)
+            # Determinate the type of the course (lab or theory) to create the key and assign it to the widget for later identification when editing/deleting
+            tipo = "1" if course.es_lab else "0"
+            # Use the day to find the index of the corresponding list in classes_list or labs_list
+            day_idx = week_days.index(days[i])
+            # Build the key for the course/lab using codigo, start hour, duration, day, aula and type (lab or theory)
+            # if already exists, add the group to the existing key, if not create a new key with the group, and in both cases add the id to the info dict for later use when editing/deleting
+            if course.es_lab:
+                info_dict = lab_info_dict
             else:
-                if key_info in lab_info_dict:
-                    # If the lab already exists, update the info
-                    gr = lab_info_dict[key_info]['grupo']
-                    old_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}'
+                info_dict = class_info_dict
 
-                    gr.append(grupo)
-                    ids = lab_info_dict[key_info]['id']
-                    ids.append(id)  # Append the new id to the existing one
-                    lab_info_dict[key_info]['grupo'] = gr
-                    lab_info_dict[key_info]['id'] = ids
+            # key_base uses codigo for unique DB-level identification
+            key_base = f"{codigo}_{st_hours[i]}_{class_duration[i]}_{days[i]}_{aula}_{tipo}"
+            
+            # merge_key uses nombre instead of codigo, so different pensum versions
+            # of the same course (same name, same slot) get merged into one widget
+            merge_key = f"{nombre}_{st_hours[i]}_{class_duration[i]}_{days[i]}_{aula}_{tipo}"
 
-                    idx = labs_list[week_days.index(days[i])].index(old_key) # Find the index of the old key
-                    new_key = f'{nombre}\n{gr}_{st_hours[i]}_{class_duration[i]}_{aula}' # Create the new key with the updated groups
-                    labs_list[week_days.index(days[i])][idx] = new_key # Update the labs list with the new key
-                else:
-                    lab_info_dict[key_info] = info
-                    labs_list[week_days.index(days[i])].append(key)
+            # Check if there's already an entry with the same merge_key
+            existing_key_base = None
+            for existing_kb, existing_info in info_dict.items():
+                existing_merge = f"{existing_info['nombre']}_{existing_info['hora_inicio']}_{existing_info['duracion']}_{existing_info['dia']}_{existing_info['aula']}_{existing_kb.split('_')[-1]}"
+                if existing_merge == merge_key:
+                    existing_key_base = existing_kb
+                    break
+
+            if existing_key_base is not None:
+                # Merge: add grupo and id if not already present
+                if grupo not in info_dict[existing_key_base]['grupo']:
+                    info_dict[existing_key_base]['grupo'].append(grupo)
+                if id not in info_dict[existing_key_base]['id']:
+                    info_dict[existing_key_base]['id'].append(id)
+                # Track all codigos that were merged into this entry
+                if 'codigos' not in info_dict[existing_key_base]:
+                    info_dict[existing_key_base]['codigos'] = [info_dict[existing_key_base]['codigo']]
+                if codigo not in info_dict[existing_key_base]['codigos']:
+                    info_dict[existing_key_base]['codigos'].append(codigo)
+            else:
+                info = {
+                    'id': [id],
+                    'nombre': nombre,
+                    'facultad': course.facultad,
+                    'dependencia': course.dependencia,
+                    'materia': course.materia,
+                    'codigo': codigo,
+                    'codigos': [codigo],
+                    'profesor': profesor,
+                    'grupo': [grupo],
+                    'aula': aula,
+                    'nivel': course.nivel,
+                    'hora_inicio': st_hours[i],     
+                    'duracion': class_duration[i],   
+                    'dia': days[i]    
+                }
+                info_dict[key_base] = info
+
+    # Build the classes_list and labs_list using the info dicts
+    added_classes = set()
+    for key_base, info in class_info_dict.items():
+        day_idx = week_days.index(info['dia'])
+        grupos_str = "-".join(str(g) for g in sorted(set(info['grupo'])))
+        widget_key = f"{info['codigo']}_{grupos_str}_0"
+        pair = (widget_key, day_idx)
+        if pair not in added_classes:
+            added_classes.add(pair)
+            classes_list[day_idx].append(widget_key)
+
+    added_labs = set()
+    for key_base, info in lab_info_dict.items():
+        day_idx = week_days.index(info['dia'])
+        grupos_str = "-".join(str(g) for g in sorted(set(info['grupo'])))
+        widget_key = f"{info['codigo']}_{grupos_str}_1"
+        pair = (widget_key, day_idx)
+        if pair not in added_labs:
+            added_labs.add(pair)
+            labs_list[day_idx].append(widget_key)
 
     return classes_list, labs_list, class_info_dict, lab_info_dict
 
@@ -302,20 +340,29 @@ def format_slot(day, hour, duration):
 def build_schedule_map(schedule_dict):
     class_map = {}
     for key, data in schedule_dict.items():
-        name, hour, duration, day = parse_schedule_key(key)
+        # Read schedule info directly from data dict instead of parsing the key
+        # This makes it work with ANY key format
+        hour = int(data['hora_inicio'])
+        duration = int(data['duracion'])
+        day = data['dia']
         slot = format_slot(day, hour, duration)
+
         for group in data['grupo']:
-            class_id = (data['id'][data['grupo'].index(group)] if len(data['id']) > 1 else data['id'][0], name, group)
+            idx = data['grupo'].index(group)
+            id_ = data['id'][idx] if len(data['id']) > 1 else data['id'][0]
+            class_id = (id_, data['nombre'], group)
             if class_id not in class_map:
-                class_map[class_id] = {}
-                class_map[class_id]["new_schedule"] = []
-            class_map[class_id]["new_schedule"].append(slot)
-            class_map[class_id]["new_professors"] = data['profesor']
-            class_map[class_id]["new_room"] = data['aula']
-            class_map[class_id]["new_fac"] = data['facultad']
-            class_map[class_id]["new_dep"] = data['dependencia']
-            class_map[class_id]["new_mat"] = data['materia']
-            class_map[class_id]["new_level"] = data['nivel'] if 'nivel' in data else 0
+                class_map[class_id] = {
+                    "new_schedule": [],
+                    "new_professors": data['profesor'],
+                    "new_room": data['aula'],
+                    "new_fac": data['facultad'],
+                    "new_dep": data['dependencia'],
+                    "new_mat": data['materia'],
+                    "new_level": data.get('nivel', 0)
+                }
+            if slot not in class_map[class_id]["new_schedule"]:
+                class_map[class_id]["new_schedule"].append(slot)
 
     return class_map
 
@@ -333,13 +380,22 @@ def build_schedule_map(schedule_dict):
 # @param is_lab Boolean indicating whether these are lab sessions (True) or classes (False)
 def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
     print("Schedule list to update:", c_edited)
+    print("schedule_dict keys:", list(schedule_dict.keys()))
+    print("c_edited:", c_edited)
     only_edited_dict = {k: v for k, v in schedule_dict.items() if k in c_edited}
     print("Only edited schedule dict:", only_edited_dict)
     # 1. Parse and format
     class_map = build_schedule_map(only_edited_dict)
+    print("Class map to update:", class_map)
 
     for (id, subject_name, group), slots in class_map.items():
         formatted_schedule = '|'.join(sorted(slots["new_schedule"]))  # example: "L16-18|W8-10"
+        print("--------------------------------------------------------------")
+        print("--------------------------------------------------------------")
+        print("--------------------------------------------------------------")
+        print(f"Formatted schedule: {formatted_schedule}")
+        horas = getHoursLong(formatted_schedule)
+        print(f"Calculated hours: {horas}")
         if id != 0:
             response = (
                 supabase
@@ -347,7 +403,9 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                 .update({
                     "horario": formatted_schedule,
                     "profesor": slots["new_professors"],
-                    "aula": slots["new_room"]
+                    "aula": slots["new_room"],
+                    "horas_teoricas": horas if not is_lab else 0,
+                    "horas_practicas": horas if is_lab else 0
                     })
                 .eq("nombre", subject_name)
                 .eq("grupo", group)
@@ -395,19 +453,85 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
 # @param deleted_keys List of course IDs to delete from database
 def delete_class_in_db(supabase, deleted_keys):
     for id_to_delete in deleted_keys:
-        print(f"Deleting {id_to_delete}...")
-        response = (
+        if id_to_delete == 0:
+            print(f"Skipping id=0 (new unsaved course)")
+            continue
+        print(f"Deleting id={id_to_delete}...")
+        # Primero poner horas a 0 para liberar carga del profesor
+        supabase.table("materias").update({
+            "horas_teoricas": 0,
+            "horas_practicas": 0,
+            "horas_tp": 0
+        }).eq("id", id_to_delete).execute()
+
+        # Luego eliminar el registro
+        del_response = (
             supabase
             .table("materias")
             .delete()
             .eq("id", id_to_delete)
             .execute()
         )
-        if response.count == None:
-            print(f"Deleted {id_to_delete} successfully!")
-        else:
-            print(f"Error deleting {id_to_delete}.")
+        print(f"Deleted {id_to_delete} successfully!") 
 
+##
+# @brief Recalculate hours after widget removal
+#           
+# This function recalculates the hours for courses affected by the removal of a schedule widget.
+# It retrieves the current schedule information, calculates the new hours by subtracting the hours of the deleted widget, and updates the database with the new hours for the affected courses.
+#
+# @param supabase Supabase client instance
+# @param hours_deleted_widget Number of hours associated with the deleted widget
+# @param keys_to_update List of schedule keys that need to have their hours updated
+# @param semester Semester/level number to filter courses (default is 1)
+
+def recalculate_hours_after_widget_removal(supabase, horas_eliminadas_por_id):
+    # get all courses to find the ones that need to be updated
+    all_courses = retrieveDBTable(supabase, "materias")
+    for course in all_courses:
+        id_ = course.id
+        if id_ in horas_eliminadas_por_id:
+            horas_a_restar = horas_eliminadas_por_id[id_]
+            #bloque_a_eliminar = horas_eliminadas_por_id[id_].get('bloque', None)
+            horario = getattr(course, "horario", "")
+            current_hours = getHoursLong(horario)
+            nuevas_horas = max(0, current_hours - horas_a_restar)
+            es_lab = getattr(course, "es_lab", False)
+            print("--------------------------------------------------------------")
+            print("--------------------------------------------------------------")
+            print(f"harario actual: {horario}")
+            print(f"horas a restar: {horas_a_restar}")
+            print(f"horas actuales: {current_hours}")
+            print(f"nuevas horas: {nuevas_horas}")
+
+            """bloques = horario.split('|') if horario else []
+            if bloque_a_eliminar and bloque_a_eliminar in bloques:
+                bloques.remove(bloque_a_eliminar)
+            nuevo_horario = '|'.join(bloques)"""
+
+            #print(f"nuevo horario: {nuevo_horario}")
+
+            # update the course with the new hours
+            response = (
+                supabase
+                .table("materias")
+                .update({
+                    "horas_teoricas": nuevas_horas if not es_lab else 0,
+                    "horas_practicas": nuevas_horas if es_lab else 0,
+                    #"horario": nuevo_horario
+                })
+                .eq("id", id_)
+                .execute()
+            )
+            if getattr(response, "error", None):
+                print(f"Error updating hours for id {id_}: {response.error}")
+            else:
+                print(f"Updated hours for id {id_} successfully!")
+
+            """if response.count == None:
+                print(f"Updated hours for id {id_} successfully!")
+            else:
+                print(f"Error updating hours for id {id_}.")"""
 ##
 # @brief Add a new professor to the database
 #

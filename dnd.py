@@ -577,7 +577,7 @@ class dnd_label:
     # @param proffs_info Dictionary with professor information
     # @param cell_to_edit Reference to currently selected cell for editing
     # @param c_edited List tracking edited course keys
-    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit, c_edited):
+    def __init__(self, window, image, geometry_width, geometry_height, lab_disp, text, bg_color, w, h, posx, posy, hours, type, room, info_label, cl_info, proffs_info, cell_to_edit, c_edited, initial_key=None):
         self.geometry_x = geometry_width ##< The width of the window
         self.geometry_y = geometry_height ##< The height of the window
         self.lab_displacement = lab_disp ##< The displacement of the lab label in the x axis
@@ -613,30 +613,44 @@ class dnd_label:
         self._initial_pos = (posx, posy)
         self._slot_key = None
 
-        # Calculate and store the initial key_info based on grid position
-        nombre = text.split("\n")[0]
-        if xlimit and ylimit:
+        # Use initial_key directly if provided (most reliable method)
+        if initial_key is not None and initial_key in cl_info:
+            self.key_info = initial_key
+        elif xlimit and ylimit:
+            # Fallback: reconstruct key_info from position (for backwards compatibility)
+            nombre = text.split("\n")[0]
             if type == "class":
                 diff_x = [abs(x - posx) for x in xlimit]
                 index_x = diff_x.index(min(diff_x))
                 diff_y = [abs(y - posy) for y in ylimit]
                 index_y = diff_y.index(min(diff_y))
-            else:  # lab
+                tipo = "0"
+            else:
                 diff_x = [abs(x - posx + lab_disp) for x in xlimit]
                 index_x = diff_x.index(min(diff_x))
                 diff_y = [abs(y - posy) for y in ylimit]
                 index_y = diff_y.index(min(diff_y))
-            self.key_info = f'{nombre}_{int(index_y+6)}_{hours}_{days_es[index_x]}_{room}'
+                tipo = "1"
+            codigo = None
+            for k, v in cl_info.items():
+                if v['nombre'] == nombre and v.get('aula') == room:
+                    codigo = v['codigo']
+                    break
+            if codigo:
+                self.key_info = f'{codigo}_{int(index_y+6)}_{hours}_{days_es[index_x]}_{room}_{tipo}'
+            else:
+                self.key_info = next(
+                    (k for k in cl_info if cl_info[k]['nombre'] == nombre and cl_info[k].get('aula') == room),
+                    None
+                )
         else:
-            self.key_info = None  # Will be set on first interaction
+            self.key_info = None
 
-        # register this widget into the occupancy map so layout can be computed responsively
         if xlimit and ylimit:
             try:
                 self.register_to_slot(posx, posy)
             except Exception as e:
                 print(f"Error in layout update: {e}")
-                pass
     
     ##
     # @brief Compute grid slot position from pixel coordinates
@@ -700,7 +714,13 @@ class dnd_label:
         slot_occupancy[slot] = lst
         self._slot_key = slot
         #self._update_slot_layout(slot)
-        # Update layout for ALL overlapping widgets, not just this slot
+        # Force Tkinter to process all pending geometry (place/configure calls)
+        # BEFORE calculating overlap layout, so winfo_x/winfo_y return correct values
+        try:
+            self.label.update_idletasks()
+        except Exception:
+            pass
+        
         self._update_overlapping_layouts(slot)
 
     ##
@@ -1008,20 +1028,10 @@ class dnd_label:
             self.label.configure(fg_color="#444444", text_color="white")
             dnd_label.active_label = self
 
+        key_info = self.key_info    
+
         nombre_completo = self.label.cget("text")
-
-        # Parse group info safely
-        try:
-            grupos_text = nombre_completo.split("\n")[1].strip("[]")
-            grupos = list(map(int, grupos_text.split(",")))
-        except (IndexError, ValueError) as e:
-            print(f"Error parsing group info from label text: '{nombre_completo}' - {e}")
-            return
-
         nombre = nombre_completo.split("\n")[0]
-
-        # Use the stored key_info instead of calculating from current position
-        key_info = self.key_info
 
         # Fallback: if key_info was never set or doesn't exist in cl_info
         if key_info is None or key_info not in self.cl_info:
@@ -1038,11 +1048,17 @@ class dnd_label:
             print(f"Available keys: {[k for k in self.cl_info if nombre in k]}")
             return
 
-        self.cell_to_edit['key'] = key_info
+        self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)
 
         # Build info text in a clean, maintainable way
         info = self.cl_info[key_info]
-        professors = [self.proffs_info[f'{pid}']['name'] for pid in info['profesor']]
+        professors = []
+        for pid in info['profesor']:
+            prof_data = self.proffs_info.get(f'{pid}')
+            if prof_data and isinstance(prof_data, dict) and 'name' in prof_data:
+                professors.append(prof_data['name'])
+            else:
+                professors.append(f"ID:{pid}")
         tipo_materia = 'Teoría' if self.type == 'class' else 'Laboratorio'
 
         info_text = (
@@ -1129,9 +1145,22 @@ class dnd_label:
             # Force Tkinter to update the widget's position immediately
             self.label.update_idletasks()
 
-            nombre = self.label.cget("text") ##< Get the text of the label
-            nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
-            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}'
+            nombre = self.label.cget("text").split("\n")[0]
+            # get the class code from cl_info using the old key_info, or fallback to searching by name and room if old key_info is missing/invalid
+            old_info = self.cl_info.get(self.key_info)
+            if old_info:
+                codigo = old_info['codigo']
+            else:
+                codigo = None
+                for k, v in self.cl_info.items():
+                    if v['nombre'] == nombre and v.get('aula') == self.room:
+                        codigo = v['codigo']
+                        break
+            # BUILD key_info for class (was missing!)
+            if codigo:
+                key_info = f'{codigo}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}_0'
+            else:
+                key_info = self.key_info        
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
                 # print(f'on release: {key_info}') ##< Print the key info of the label being moved
@@ -1189,9 +1218,21 @@ class dnd_label:
             # Force Tkinter to update the widget's position immediately
             self.label.update_idletasks()
 
-            nombre = self.label.cget("text") ##< Get the text of the label
-            nombre = nombre.split("\n")[0] ##< Split the text to get only the name of the class/lab, without the group information
-            key_info = f'{nombre}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}'
+            nombre = self.label.cget("text").split("\n")[0]
+            old_info = self.cl_info.get(self.key_info)
+            if old_info:
+                codigo = old_info['codigo']
+            else:
+                codigo = None
+                for k, v in self.cl_info.items():
+                    if v['nombre'] == nombre and v.get('aula') == self.room:
+                        codigo = v['codigo']
+                        break
+
+            if codigo:
+                key_info = f'{codigo}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}_1'
+            else:
+                key_info = self.key_info
 
             if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
                 # print(f'on release: {key_info}') ##< Print the key info of the label being moved
