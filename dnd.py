@@ -586,16 +586,14 @@ class dnd_label:
         self.image = image
 
         self.label = ctk.CTkLabel(window,
-                           text=text,
-                           font=("Arial", 14),
-                           fg_color=bg_color,
-                           text_color="black",
-                           width=w,
-                           height=h,
-                           wraplength=w-5,
-                           corner_radius=5,
-                           compound="center") ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
+                            text=text,
+                            fg_color=bg_color,
+                            text_color="black",
+                            width=self.w,
+                            height=self.h,
+                            corner_radius=6) ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
         
+        self.label.place(x=posx, y=posy)
         self.hours = hours ##< The number of hours the label will occupy in the grid
         self.type = type   ##< The type of the label (class or lab)
         self.room = room   ##< The room where the class/lab is held
@@ -604,10 +602,12 @@ class dnd_label:
         self.proffs_info = proffs_info ##< The professors information dictionary to be used in the info label
         self.cell_to_edit = cell_to_edit ##< The cell to edit in the edit class window
         self.c_edited = c_edited ##< The edited classes keys
-        self.label.place(x=posx, y=posy) ##< Set the position of the label
         self.label.bind("<Button-1>", self.on_press) ##< Bind the left mouse button to the on_press method
         self.label.bind("<B1-Motion>", self.on_drag) ##< Bind the left mouse button motion to the on_drag method
         self.label.bind("<ButtonRelease-1>", self.on_release) ##< Bind the left mouse button release to the on_release method
+
+        # vínculo widget -> controlador
+        self.label.dnd_ref = self
 
         # store initial pos and slot info
         self._initial_pos = (posx, posy)
@@ -645,6 +645,8 @@ class dnd_label:
                 )
         else:
             self.key_info = None
+
+        self.label.info_key = self.key_info
 
         if xlimit and ylimit:
             try:
@@ -821,12 +823,16 @@ class dnd_label:
                 text = "?"
             print(f"  Widget '{text}': col={col}, max_cols={max_cols}, per_w={per_w}, target_x={target_x}, target_y={target_y}, current_x={widget.winfo_x()}, current_y={widget.winfo_y()}")
             
+            # Obtener altura real del controlador
+            dnd_controller = getattr(widget, 'dnd_ref', None)
+            widget_height = dnd_controller.h if dnd_controller is not None else self.h
+
             try:
                 # IMPORTANT: For CTkLabel, we must configure the widget's own width property
                 # AND use place_configure to set the geometry. place_configure alone may not
                 # resize a CTkLabel because customtkinter manages its own internal sizing.
                 widget.configure(width=per_w, wraplength=new_wraplength, font=("Arial", font_size))
-                widget.place_configure(x=target_x, y=target_y, width=per_w)
+                widget.place_configure(x=target_x, y=target_y)
                 # Force immediate visual update
                 widget.update_idletasks()
             except Exception as e:
@@ -1036,7 +1042,10 @@ class dnd_label:
         # Fallback: if key_info was never set or doesn't exist in cl_info
         if key_info is None or key_info not in self.cl_info:
             key_info = next(
-                (k for k in self.cl_info if k.startswith(f'{nombre}_') and k.endswith(f'_{self.room}')),
+                (
+                    k for k, v in self.cl_info.items()
+                    if v['nombre'] == nombre and v.get('aula') == self.room
+                ),
                 None
             )
             if key_info:
@@ -1088,7 +1097,7 @@ class dnd_label:
         x = self.label.winfo_x() - self.x + event.x ##< Get the new x position of the label
         y = self.label.winfo_y() - self.y + event.y ##< Get the new y position of the label
         # Use place_configure with fixed width/height to prevent deformation during drag
-        self.label.place_configure(x=x, y=y, width=self._drag_width, height=self._drag_height)
+        self.label.place_configure(x=x, y=y)
         self._did_drag = True  # Mark that an actual drag occurred
 
     ##
@@ -1140,14 +1149,17 @@ class dnd_label:
             final_x = xlimit[index_x]
             final_y = ylimit[index_y]
 
-            # ALWAYS snap label to grid position after calculating/clamping indices
             self.label.place(x=final_x, y=final_y)
+
             # Force Tkinter to update the widget's position immediately
             self.label.update_idletasks()
 
+            old_key = self.key_info
             nombre = self.label.cget("text").split("\n")[0]
-            # get the class code from cl_info using the old key_info, or fallback to searching by name and room if old key_info is missing/invalid
-            old_info = self.cl_info.get(self.key_info)
+            new_day = days_es[index_x]
+            new_hour = int(index_y + 6)
+
+            old_info = self.cl_info.get(old_key)
             if old_info:
                 codigo = old_info['codigo']
             else:
@@ -1162,17 +1174,23 @@ class dnd_label:
             else:
                 key_info = self.key_info        
 
-            if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
-                # print(f'on release: {key_info}') ##< Print the key info of the label being moved
-                self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
-                # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
-                del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
-                self.c_edited.append(key_info) ##< Add the edited class key to the list
-                self.cell_to_edit['key'] = key_info ##< Set the key of the cell to edit in the edit class window
-                self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
-                # Update the stored key_info to the new valid key
+            if old_key in self.cl_info:
+                self.cl_info[old_key]['dia'] = new_day
+                self.cl_info[old_key]['hora_inicio'] = new_hour
+                self.cl_info[old_key]['duracion'] = self.hours
+                self.cl_info[old_key]['aula'] = self.room
+
+            if key_info != old_key and old_key in self.cl_info:
+                self.cl_info[key_info] = self.cl_info.pop(old_key)
                 self.key_info = key_info
-                # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
+            else:
+                self.key_info = old_key
+
+            self.label.info_key = self.key_info    
+
+            if self.key_info not in self.c_edited:
+                self.c_edited.append(self.key_info)
+            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)
 
             # Update occupancy: unregister from old slot and register into new
             old_slot = self._slot_key
@@ -1196,6 +1214,8 @@ class dnd_label:
                 # Cell hasn't moved - but still need to update ALL overlapping widgets
                 # in this day to ensure proper layout (not just this slot)
                 self._update_all_overlapping_in_day(index_x, self.type)
+
+
         
         elif self.type == "lab": ##< Check if the label is a lab
             diff_x = [abs(x - self.label.winfo_x() + self.lab_displacement) for x in xlimit] ##< Get the difference between the x position of the label and the x positions of the grid, adding the lab displacement to the x position of the label
@@ -1203,7 +1223,7 @@ class dnd_label:
             diff_y = [abs(y - self.label.winfo_y()) for y in ylimit] ##< Get the difference between the y position of the label and the y positions of the grid
             index_y = diff_y.index(min(diff_y)) ##< Get the index of the minimum difference in the y axis. This gives the closest y (hour) position in the grid to the label.
             # print(f'Class {self.label.cget("text")} moved to {days[index_x]} at {index_y+6}:00 to {index_y+6+self.hours}:00') ##< Print the position of the label when it is released
-
+    
             # CLAMP index_y: Ensure label doesn't extend past grid bottom
             max_valid_index_y = len(ylimit) - self.hours
             if index_y > max_valid_index_y:
@@ -1218,33 +1238,44 @@ class dnd_label:
             # Force Tkinter to update the widget's position immediately
             self.label.update_idletasks()
 
+            old_key = self.key_info
             nombre = self.label.cget("text").split("\n")[0]
-            old_info = self.cl_info.get(self.key_info)
+            new_day = days_es[index_x]
+            new_hour = int(index_y + 6)
+
+            old_info = self.cl_info.get(old_key)
             if old_info:
                 codigo = old_info['codigo']
             else:
                 codigo = None
-                for k, v in self.cl_info.items():
+                for _, v in self.cl_info.items():
                     if v['nombre'] == nombre and v.get('aula') == self.room:
                         codigo = v['codigo']
                         break
 
             if codigo:
-                key_info = f'{codigo}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}_1'
+                key_info = f'{codigo}_{new_hour}_{self.hours}_{new_day}_{self.room}_1'
             else:
-                key_info = self.key_info
+                key_info = old_key
 
-            if key_info != self.key_info: ##< Check if the key info of the label being moved is different from the key info of the label when it was pressed
-                # print(f'on release: {key_info}') ##< Print the key info of the label being moved
-                self.cl_info[key_info] = self.cl_info[self.key_info] ##< Update the class information dictionary with the new position of the label
-                # print(f"Class info updated: {self.cl_info[key_info]}") ##< Print the class information
-                del self.cl_info[self.key_info] ##< Delete the old position of the label from the class information
-                self.c_edited.append(key_info) ##< Add the edited class key to the list
-                self.cell_to_edit['key'] = key_info ##< Set the key of the cell to edit in the edit class window
-                self.c_edited.remove(self.key_info) if self.key_info in self.c_edited else None ##< Remove the old key info from the edited classes list
-                # Update the stored key_info to the new valid key
+            if old_key in self.cl_info:
+                self.cl_info[old_key]['dia'] = new_day
+                self.cl_info[old_key]['hora_inicio'] = new_hour
+                self.cl_info[old_key]['duracion'] = self.hours
+                self.cl_info[old_key]['aula'] = self.room
+
+            if key_info != old_key and old_key in self.cl_info:
+                self.cl_info[key_info] = self.cl_info.pop(old_key)
                 self.key_info = key_info
-                # print(f"-------\nNew dictionary: {self.cl_info}\n-------") ##< Print the old key info of the label being moved
+            else:
+                self.key_info = old_key
+
+            self.label.info_key = self.key_info    
+
+            if self.key_info not in self.c_edited:
+                self.c_edited.append(self.key_info)
+
+            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)
             
             # Update occupancy for lab similarly to class
             old_slot = self._slot_key

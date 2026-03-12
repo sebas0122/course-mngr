@@ -838,9 +838,24 @@ def open_add_class_window():
         # ensure color exists for the course name
         bg_color = class_colors_dict.get(name)
         if not bg_color:
-            class_colors_dict[name] = colors[colors_idx]
+            class_colors_dict[name] = colors[colors_idx % len(colors)]
             bg_color = class_colors_dict[name]
             colors_idx += 1
+
+        # Parse nivel safely (handles "Nivel 1", "E. Control", etc.)
+        nivel_str = opt.get()
+        nivel_parts = nivel_str.split(" ")
+        try:
+            nivel_val = int(nivel_parts[-1])
+        except ValueError:
+            # Fallback map for elective tracks
+            nivel_map = {
+                "E. Control": 11,
+                "E. Digitales": 12,
+                "E. Telecom": 13,
+                "E. Transversales": 14
+            }
+            nivel_val = nivel_map.get(nivel_str, 1)    
 
         for r in list(labs_rows):
             try:
@@ -869,16 +884,22 @@ def open_add_class_window():
             codigo = f"{fac}{dep}{mat}"
             grupos_str = "-".join(str(g) for g in sorted(set(group_list)))
             tipo = "1" if is_lab else "0"
-            key = f"{codigo}_{grupos_str}_{tipo}"
-            #key = f"{name}_{entry_start}_{entry_dur}_{entry_day}_{entry_room}"
+
+             # widget_key = course_key (what the widget uses for identification)
+            widget_key = f"{codigo}_{grupos_str}_{tipo}"
+
+            # key_base = key used in c_info/l_info (old format, consistent with getClassesList)
+            key_base = f"{codigo}_{entry_start}_{entry_dur}_{entry_day}_{entry_room}_{tipo}"
+
             info_dict = {
                 "id": [0],
-                "nivel": int(opt.get().split(" ")[1]),
+                "nivel": nivel_val,
                 "nombre": name,
                 "facultad": fac,
                 "dependencia": dep,
                 "materia": mat,
                 "codigo": f"{fac}{dep}{mat}",
+                "codigos": [codigo],        # needed by delete_selected_class
                 "profesor": professor_list,
                 "grupo": group_list,
                 "aula": entry_room,
@@ -888,11 +909,15 @@ def open_add_class_window():
             }
 
             if is_lab:
-                l_info[key] = info_dict
-                labs_edited_keys.append(key)
+                l_info[key_base] = info_dict
+                if key_base not in labs_edited_keys:
+                    labs_edited_keys.append(key_base)
             else:
-                c_info[key] = info_dict
-                classes_edited_keys.append(key)
+                c_info[key_base] = info_dict
+                if key_base not in classes_edited_keys:
+                    classes_edited_keys.append(key_base)
+
+            print(f"Added to {'l_info' if is_lab else 'c_info'} with key_base={key_base}, widget_key={widget_key}")        
 
             # Add UI label
             dnd_label(window=window,
@@ -900,7 +925,7 @@ def open_add_class_window():
                       geometry_width=screen_width,
                       geometry_height=screen_height,
                       lab_disp=lab_displacement if is_lab else 0,
-                      text=f"{name}\n{info_dict['grupo']}",
+                      text=f"{name}\n{sorted(set(group_list))}",
                       bg_color=bg_color,
                       w=single_width,
                       h=(entry_dur * single_height),
@@ -913,10 +938,11 @@ def open_add_class_window():
                       cl_info=l_info if is_lab else c_info,
                       proffs_info=p_info,
                       cell_to_edit=class_edit,
-                      c_edited=labs_edited_keys if is_lab else classes_edited_keys)
+                      c_edited=labs_edited_keys if is_lab else classes_edited_keys,
+                      initial_key=key_base) ##< Create the drag&drop label for the class or lab
 
             lbs_ids.append(window.winfo_children()[-1])
-            lbs_ids[-1].course_key = key
+            lbs_ids[-1].course_key = widget_key  # widget_key is what identifies the course for editing/deletion
 
         add_win.destroy()
 
@@ -1208,6 +1234,7 @@ def open_edit_class_window():
 
         keys_to_delete = []
         entries_to_add = []
+        old_to_new = {}
 
         for fk in all_found:
             old_info = target_dict[fk]
@@ -1233,7 +1260,9 @@ def open_edit_class_window():
             }
             keys_to_delete.append(fk)
             entries_to_add.append((new_base_key, info_dict))
-            edited_list.append(new_base_key)
+            old_to_new[fk] = new_base_key
+            if new_base_key not in edited_list:
+                edited_list.append(new_base_key)
 
         for fk in keys_to_delete:
             del target_dict[fk]
@@ -1245,13 +1274,29 @@ def open_edit_class_window():
             if widget_w in lbs_ids:
                 if isinstance(widget_w, ctk.CTkLabel) and hasattr(widget_w, "course_key") and widget_w.course_key == widget_key:
                     unique_g = sorted(set(group))
-                    widget_w.configure(text=f"{name}\n{unique_g}")
-                    widget_w.course_key = new_widget_key 
+                    new_height = duration * single_height
+                    widget_w.configure(text=f"{name}\n{unique_g}", height=new_height)
+                    widget_w.place_configure(height=new_height)
+                    widget_w.course_key = new_widget_key
+
                     # Update the dnd_label key_info so that on_press continues to function
                     # Find the dnd_label that manages this widget  
-                    for child in window.winfo_children():
-                        if hasattr(child, 'key_info') and child is widget_w:
-                            child.key_info = entries_to_add[0][0] if entries_to_add else child.key_info
+                    controller = getattr(widget_w, "dnd_ref", None)
+                    if controller is not None:
+                        controller.cl_info = target_dict
+                        controller.room = room
+                        controller.hours = duration
+                        controller.h = new_height
+
+                        if controller.key_info in old_to_new:
+                            controller.key_info = old_to_new[controller.key_info]
+
+                        old_slot = controller._slot_key
+                        try:
+                            controller.unregister_from_slot(old_slot)
+                        except Exception:
+                            pass
+                        controller.register_to_slot(widget_w.winfo_x(), widget_w.winfo_y())
         
         class_edit['key'] = new_widget_key
         add_win.destroy()
@@ -1354,12 +1399,7 @@ def delete_selected_class():
                 for id in l_info[lab_key]['id']:
                     if id not in deleted_keys:
                         deleted_keys.append(id)
-                # Marcar para que update_database lo procese
-                if lab_key not in labs_edited_keys:
-                    labs_edited_keys.append(lab_key)
-                # Eliminar widget de la UI
-                lab_widget_key = f"{l_info[lab_key]['codigo']}_{'- '.join(str(g) for g in sorted(set(l_info[lab_key]['grupo'])))}_1"
-                # Buscar usando course_key del widget
+                        
                 grupos_str = "-".join(str(g) for g in sorted(set(l_info[lab_key]['grupo'])))
                 lab_widget_key = f"{l_info[lab_key]['codigo']}_{grupos_str}_1"
                 for widget in list(window.winfo_children()):

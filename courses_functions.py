@@ -310,11 +310,18 @@ DAYS_MAP = {
 def parse_schedule_key(key):
     # Example key: 'INFORMÁTICA I_16_2_Lunes'
     parts = key.split('_')
-    name = parts[0]
-    hour = int(parts[1])
-    duration = int(parts[2])
-    day = parts[3]
-    return name, hour, duration, day
+    if len(parts) < 6:
+        return None
+    try:
+        codigo = parts[0]
+        hour = int(parts[1])
+        duration = int(parts[2])
+        day = parts[3]
+        tipo = parts[-1]
+        room = "_".join(parts[4:-1])  # safe if room contains underscores
+        return codigo, hour, duration, day, room, tipo
+    except Exception:
+        return None
 
 ##
 # @brief Format schedule slot into compact notation
@@ -340,11 +347,18 @@ def format_slot(day, hour, duration):
 def build_schedule_map(schedule_dict):
     class_map = {}
     for key, data in schedule_dict.items():
-        # Read schedule info directly from data dict instead of parsing the key
-        # This makes it work with ANY key format
-        hour = int(data['hora_inicio'])
-        duration = int(data['duracion'])
-        day = data['dia']
+        # Prefer parsing from key (old-format keys are authoritative after drag)
+        parsed = parse_schedule_key(key)
+        if parsed is not None:
+            _, hour, duration, day, _, _ = parsed
+        else:
+            hour = int(data['hora_inicio'])
+            duration = int(data['duracion'])
+            day = data['dia']
+
+        # Ensure types are correct for format_slot
+        hour = int(hour)
+        duration = int(duration)
         slot = format_slot(day, hour, duration)
 
         for group in data['grupo']:
@@ -426,8 +440,8 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                     "tipo": 'T-P',
                     "es_lab": is_lab,
                     "nivel": slots['new_level'],
-                    "horas_teoricas": 4,
-                    "horas_practicas": 3,
+                    "horas_teoricas": horas if not is_lab else 0,
+                    "horas_practicas": horas if is_lab else 0,
                     "horas_tp": 0,
                     "electiva": False,
                     "es_dept": True,
