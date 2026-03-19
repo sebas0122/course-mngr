@@ -591,6 +591,7 @@ class dnd_label:
                             text_color="black",
                             width=self.w,
                             height=self.h,
+                            wraplength=max(self.w - 25, 20),
                             corner_radius=6) ##< Create the label with the given parameters. The image is used to set the background of the label, the text is used to display the name of the class or lab, the bg_color is used to set the background color of the label, the width and height are used to set the size of the label, and the wraplength is used to set the maximum width of the text before it wraps to a new line.
         
         self.label.place(x=posx, y=posy)
@@ -808,14 +809,14 @@ class dnd_label:
             if max_cols == 1:
                 per_w = full_width
                 target_x = base_x
-                new_wraplength = full_width - 5
-                font_size = 14
+                new_wraplength = max(full_width - 25, 20)
+                font_size = 12
             else:
                 # Calculate width based on actual overlaps for THIS widget
                 per_w = int(full_width / max(1, max_cols))
                 target_x = base_x + col * per_w
-                new_wraplength = max(per_w - 10, 20)
-                font_size = max(8, min(14, int(per_w / 8)))
+                new_wraplength = max(per_w - 25, 20)
+                font_size = max(8, min(12, int(per_w / 9)))
 
             try:
                 text = widget.cget("text").split("\n")[1][:10]
@@ -831,7 +832,7 @@ class dnd_label:
                 # IMPORTANT: For CTkLabel, we must configure the widget's own width property
                 # AND use place_configure to set the geometry. place_configure alone may not
                 # resize a CTkLabel because customtkinter manages its own internal sizing.
-                widget.configure(width=per_w, wraplength=new_wraplength, font=("Arial", font_size))
+                widget.configure(width=per_w, height=widget_height, wraplength=new_wraplength, font=("Arial", font_size))
                 widget.place_configure(x=target_x, y=target_y)
                 # Force immediate visual update
                 widget.update_idletasks()
@@ -866,7 +867,7 @@ class dnd_label:
             target_y = ylimit[index_y]
             target_x = base_x + idx * per_w  # No conditional displacement here
             try:
-                w.place_configure(x=target_x, y=target_y, width=per_w)
+                w.place_configure(x=target_x, y=target_y, width=per_w, height=widget_height)
             except Exception as e:
                 print(f"Error in layout update: {e}")
                 pass"""
@@ -926,7 +927,7 @@ class dnd_label:
             target_y = ylimit[index_y]
             
             try:
-                w.place_configure(x=target_x, y=target_y, width=per_w)
+                w.place_configure(x=target_x, y=target_y)
             except Exception as e:
                 print(f"Error in layout update: {e}")
 

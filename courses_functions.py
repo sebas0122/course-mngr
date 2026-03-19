@@ -10,15 +10,83 @@
 # @author Nelson Parra (nelson.parra@udea.edu.co)
 # @date 2025
 
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
+import re
+import sys
+from dotenv import load_dotenv
+
+# Load .env from beside the .exe (when frozen) or beside this script (dev)
+_base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False)
+                             else os.path.abspath(__file__))
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print("--------------------------------------------------------------")
+print(f"Loading .env from: {_base_dir}")
+load_dotenv(dotenv_path=os.path.join(_base_dir, '.env'))
 
 from supabase import create_client
 import pandas as pd
 from course import Course
 from professor import Professor
+
+DAY_LETTER_TO_NAME = {
+    "L": "Lunes",
+    "M": "Martes",
+    "W": "Miércoles",
+    "J": "Jueves",
+    "V": "Viernes",
+    "S": "Sábado",
+}
+
+DAY_NAME_TO_LETTER = {v: k for k, v in DAY_LETTER_TO_NAME.items()}
+
+DAY_ORDER = {"L": 0, "M": 1, "W": 2, "J": 3, "V": 4, "S": 5}
+
+_TOKEN_RE = re.compile(r"^([LMWJVS]+)(\d{1,2})-(\d{1,2})$")
+
+def parse_schedule_slots(schedule_raw):
+    if schedule_raw is None:
+        raise ValueError("Horario vacío (None).")
+
+    s = str(schedule_raw).strip().replace(" ", "")
+    if not s:
+        raise ValueError("Horario vacío.")
+
+    tokens = [t for t in s.split("|") if t]
+    if not tokens:
+        raise ValueError("Horario sin bloques válidos.")
+
+    slots = []
+    for token in tokens:
+        m = _TOKEN_RE.match(token)
+        if not m:
+            raise ValueError(f"Formato de bloque inválido: {token}")
+
+        day_letters, start_txt, end_txt = m.groups()
+        start = int(start_txt)
+        end = int(end_txt)
+
+        if end <= start:
+            raise ValueError(f"Rango inválido en bloque {token}: fin <= inicio")
+        if start < 0 or end > 24:
+            raise ValueError(f"Rango horario fuera de límites en bloque {token}")
+
+        for d in day_letters:
+            if d not in DAY_LETTER_TO_NAME:
+                raise ValueError(f"Día inválido en bloque {token}: {d}")
+            slots.append((d, start, end))
+
+    slots.sort(key=lambda x: (DAY_ORDER[x[0]], x[1], x[2]))
+    return slots
+
+def normalize_schedule(schedule_raw):
+    slots = parse_schedule_slots(schedule_raw)
+    return "|".join(f"{d}{start}-{end}" for d, start, end in slots)
 
 ##
 # @brief Parse schedule string into days, start hours, and durations
@@ -38,37 +106,15 @@ from professor import Professor
 #         - start_hours: List of start hours for each class
 #         - class_duration: List of class durations in hours for each class
 def getClassSchedule(days_hours_string):
-    days_dict = {"L": "Lunes", "M": "Martes", "W": "Miércoles", "J": "Jueves", "V": "Viernes", "S": "Sábado", "D": "Domingo"} ##< Dictionary to map letters to days in Spanish
-    days_hours_string = days_hours_string.replace(" ", "") ##< Remove spaces from the string
-    days_hours_list = days_hours_string.split("|") ##< Split the string by "|"
     days = []
     start_hours = []
     class_duration = []
-    for sch in days_hours_list:
-        if sch != "":
-            """if sch[1] not in days_dict:
-                days.append(days_dict[sch[0]]) ##< Add the day to the list
-                start_hours.append(sch[1:].split("-")[0]) ##< Add the start hour to the list
-                class_duration.append(int(sch[1:].split("-")[1]) - int(sch[1:].split("-")[0])) ##< Add the class duration to the list
-            else:
-                days.append(days_dict[sch[0]]) ##< Add the day to the list
-                days.append(days_dict[sch[1]]) ##< Add the second day to the list 
-                start_hours.append(sch[2:].split("-")[0]) ##< Add the start hour to the list
-                start_hours.append(sch[2:].split("-")[0]) ##< Add the start hour to the list again for the second day
-                class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list
-                class_duration.append(int(sch[2:].split("-")[1]) - int(sch[2:].split("-")[0])) ##< Add the class duration to the list again for the second day"""
-            # Encuentra la parte de días (letras) y la parte de horas (números)
-            i = 0
-            while i < len(sch) and sch[i] in days_dict:
-                i += 1
-            dias = sch[:i]
-            horas = sch[i:]
-            start, end = horas.split("-")
-            dur = int(end) - int(start)
-            for d in dias:
-                days.append(days_dict[d])
-                start_hours.append(start)
-                class_duration.append(dur)
+
+    slots = parse_schedule_slots(days_hours_string)
+    for d, start, end in slots:
+        days.append(DAY_LETTER_TO_NAME[d])
+        start_hours.append(str(start))
+        class_duration.append(end - start)
 
     return days, start_hours, class_duration
 
@@ -83,23 +129,11 @@ def getClassSchedule(days_hours_string):
 # @return Integer representing total number of hours, or 0 if parsing fails
 def getHoursLong(days_hours_string):
     try:
-        """if "|" in days_hours_string: ##< Check if the string contains "|"
-            _, _, x = getClassSchedule(days_hours_string) ##< Get the class duration
-            return int(sum(x)) ##< Return the total number of hours
-        else:
-            letters = ["L", "M", "W", "J", "V", "S", "D"] ##< List of letters representing days
-            if days_hours_string[1] in letters: ##< Check if the second character is a letter
-                x = days_hours_string[2:].split("-") ##< Split the string to get the start and end hours
-            else:
-                x = days_hours_string[1:].split("-") ##< Split the string to get the start and end hours
-            return int(x[1]) - int(x[0]) ##< Return the difference between the end and start hours"""
-        _, _, x = getClassSchedule(days_hours_string)
-        print("--------------------------------------------------------------")
-        print(f"duracion: {x}")
-        print("--------------------------------------------------------------")
-        return int(sum(x))
-    except:
-        return 0 ##< Return 0 if there is an error in processing the string
+        slots = parse_schedule_slots(days_hours_string)
+        return sum(end - start for _, start, end in slots)
+    except Exception as e:
+        print(f"Horario inválido en getHoursLong: {days_hours_string} -> {e}")
+        return 0
 
 ##
 # @brief Establish connection to Supabase database
@@ -133,7 +167,12 @@ def connectSQL():
 # @return List of SQLModel objects (Course or Professor) for recognized tables,
 #         pandas DataFrame for other tables
 def retrieveDBTable(supabase, table_name):
-    # Retrieve data from the specified table
+    if supabase is None:
+        raise ConnectionError(
+            "No se pudo conectar a la base de datos. "
+            "Verifica que el archivo .env esté presente junto al ejecutable "
+            "y que las credenciales SUPABASE_URL y SUPABASE_KEY sean correctas."
+        )
     data = supabase.table(table_name).select("*").execute()
 
     # Convert to SQLModel objects if possible
@@ -190,6 +229,9 @@ def getClassesList(courses_list, semester):
             day_idx = week_days.index(days[i])
             # Build the key for the course/lab using codigo, start hour, duration, day, aula and type (lab or theory)
             # if already exists, add the group to the existing key, if not create a new key with the group, and in both cases add the id to the info dict for later use when editing/deleting
+            if day_idx >= len(classes_list):
+                # La UI actual muestra 6 días (L-S). Ignorar Domingo para no romper.
+                continue
             if course.es_lab:
                 info_dict = lab_info_dict
             else:
@@ -348,6 +390,7 @@ def build_schedule_map(schedule_dict):
     class_map = {}
     for key, data in schedule_dict.items():
         # Prefer parsing from key (old-format keys are authoritative after drag)
+        
         parsed = parse_schedule_key(key)
         if parsed is not None:
             _, hour, duration, day, _, _ = parsed
@@ -403,7 +446,10 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
     print("Class map to update:", class_map)
 
     for (id, subject_name, group), slots in class_map.items():
-        formatted_schedule = '|'.join(sorted(slots["new_schedule"]))  # example: "L16-18|W8-10"
+        try:
+            formatted_schedule = normalize_schedule("|".join(slots["new_schedule"]))
+        except Exception:
+            formatted_schedule = "|".join(slots["new_schedule"])
         print("--------------------------------------------------------------")
         print("--------------------------------------------------------------")
         print("--------------------------------------------------------------")

@@ -1674,16 +1674,13 @@ add_prof_button.place(x=int(screen_width*(14/15)), y=single_height*18) ##< Set t
 window.mainloop() ##< Start the main loop of the window
 
 
-def consultar_grupo(grupo_num):
+"""def consultar_grupo(grupo_num):
     result = supabase_instance.table("materias").select("*").eq("grupo", grupo_num).execute()
     print(f"Cursos del grupo {grupo_num}:")
     for row in result.data:
         print(row)
-
-if __name__ == "__main__":
-    consultar_grupo(1)
-
-
+        if __name__ == "__main__":
+    consultar_grupo(1)"""
 
 
 

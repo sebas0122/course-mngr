@@ -10,9 +10,9 @@
 # @author Nelson Parra (nelson.parra@udea.edu.co)
 # @date 2025
 
-import pandas as pd
 import re
-from courses_functions import getHoursLong
+import pandas as pd
+from courses_functions import getHoursLong, normalize_schedule
 
 ##
 # @brief Read Excel file containing course data
@@ -125,12 +125,12 @@ def getCleanData(dataframe):
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', False, int(nivel), getHoursLong(df_hora[i]),
                                         0, 0, electiva, es_dpt,
-                                        str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
+                                        normalize_schedule(str(df_hora[i])) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
                         # Append the course lab information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T-P', True, int(nivel), 0,
                                         getHoursLong(df_hora[i+1]), 0, electiva, es_dpt,
-                                        str(df_hora[i+1]) if pd.notna(df_hora[i+1]) else 'L6-9', lab_prof_id, str(df_aula[i+1]) if pd.notna(df_aula[i+1]) else 0])
+                                        normalize_schedule(str(df_hora[i+1])) if pd.notna(df_hora[i+1]) else 'L6-9', lab_prof_id, str(df_aula[i+1]) if pd.notna(df_aula[i+1]) else 0])
                     else: ##< If the next value in the FAC column is not a float, indicating a theory course
                         courses.append([
                             str(df_fac[i]) + str(int(df_dep[i])) + str(df_mat[i]),
@@ -139,7 +139,7 @@ def getCleanData(dataframe):
                         # Append the course theory information to the courses list
                         for_db.append([materia_limpia, int(df_fac[i]), int(df_dep[i]), df_ide[i],
                                         int(df_mat[i]), int(df_group[i]), 'T', False, int(nivel), getHoursLong(df_hora[i]),
-                                        0, 0, electiva, es_dpt, str(df_hora[i]) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
+                                        0, 0, electiva, es_dpt, normalize_schedule(str(df_hora[i])) if pd.notna(df_hora[i]) else 'L6-8', profs_id, str(df_aula[i]) if pd.notna(df_aula[i]) else 0])
     print(for_db)
     return for_db
 

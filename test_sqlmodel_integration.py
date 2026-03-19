@@ -133,6 +133,27 @@ try:
 except Exception as e:
     print(f"✗ Failed to import functions: {e}")
 
+# Test 6: Test mixed schedule formats
+print("\n6. Testing mixed schedule formats:")
+print("-" * 40)
+
+from courses_functions import normalize_schedule, getHoursLong
+
+cases = [
+    ("LM8-10", "L8-10|M8-10", 4),
+    ("L16-18|M8-10", "L16-18|M8-10", 4),
+    ("L10-12|M10-12|W10-12", "L10-12|M10-12|W10-12", 6),
+]
+
+for raw, expected_norm, expected_hours in cases:
+    try:
+        norm = normalize_schedule(raw)
+        hrs = getHoursLong(raw)
+        ok = (norm == expected_norm and hrs == expected_hours)
+        print(f"{'✓' if ok else '✗'} {raw} -> norm={norm}, hours={hrs}")
+    except Exception as e:
+        print(f"✗ {raw} -> Error: {e}")
+
 print("\n" + "=" * 60)
 print("All tests completed!")
 print("=" * 60)

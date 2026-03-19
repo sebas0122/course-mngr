@@ -10,7 +10,7 @@
 # Change these values to customize your executable:
 
 APP_NAME = 'CourseManager'              # Name of the executable (without .exe)
-APP_VERSION = '1.0.0'                   # Application version
+APP_VERSION = '1.1.0'                   # Application version
 APP_DESCRIPTION = 'Course Schedule Manager'  # Description
 COMPANY_NAME = 'Universidad de Antioquia'    # Company/Organization name
 COPYRIGHT = 'Copyright (c) 2025'        # Copyright notice
@@ -71,8 +71,8 @@ except:
     pass
 
 # Add .env file if it exists
-if os.path.exists('.env'):
-    datas.append(('.env', '.'))
+# if os.path.exists('.env'):
+#    datas.append(('.env', '.'))
 
 a = Analysis(
     ['main.py'],
