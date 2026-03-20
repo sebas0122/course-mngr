@@ -1156,24 +1156,8 @@ class dnd_label:
             self.label.update_idletasks()
 
             old_key = self.key_info
-            nombre = self.label.cget("text").split("\n")[0]
             new_day = days_es[index_x]
             new_hour = int(index_y + 6)
-
-            old_info = self.cl_info.get(old_key)
-            if old_info:
-                codigo = old_info['codigo']
-            else:
-                codigo = None
-                for k, v in self.cl_info.items():
-                    if v['nombre'] == nombre and v.get('aula') == self.room:
-                        codigo = v['codigo']
-                        break
-            # BUILD key_info for class (was missing!)
-            if codigo:
-                key_info = f'{codigo}_{int(index_y+6)}_{self.hours}_{days_es[index_x]}_{self.room}_0'
-            else:
-                key_info = self.key_info        
 
             if old_key in self.cl_info:
                 self.cl_info[old_key]['dia'] = new_day
@@ -1181,17 +1165,13 @@ class dnd_label:
                 self.cl_info[old_key]['duracion'] = self.hours
                 self.cl_info[old_key]['aula'] = self.room
 
-            if key_info != old_key and old_key in self.cl_info:
-                self.cl_info[key_info] = self.cl_info.pop(old_key)
-                self.key_info = key_info
-            else:
-                self.key_info = old_key
+            self.key_info = old_key
+            self.label.info_key = old_key
 
-            self.label.info_key = self.key_info    
-
-            if self.key_info not in self.c_edited:
-                self.c_edited.append(self.key_info)
-            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)
+            if old_key not in self.c_edited:
+                self.c_edited.append(old_key)
+                   
+            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None) 
 
             # Update occupancy: unregister from old slot and register into new
             old_slot = self._slot_key
@@ -1240,24 +1220,8 @@ class dnd_label:
             self.label.update_idletasks()
 
             old_key = self.key_info
-            nombre = self.label.cget("text").split("\n")[0]
             new_day = days_es[index_x]
             new_hour = int(index_y + 6)
-
-            old_info = self.cl_info.get(old_key)
-            if old_info:
-                codigo = old_info['codigo']
-            else:
-                codigo = None
-                for _, v in self.cl_info.items():
-                    if v['nombre'] == nombre and v.get('aula') == self.room:
-                        codigo = v['codigo']
-                        break
-
-            if codigo:
-                key_info = f'{codigo}_{new_hour}_{self.hours}_{new_day}_{self.room}_1'
-            else:
-                key_info = old_key
 
             if old_key in self.cl_info:
                 self.cl_info[old_key]['dia'] = new_day
@@ -1265,18 +1229,13 @@ class dnd_label:
                 self.cl_info[old_key]['duracion'] = self.hours
                 self.cl_info[old_key]['aula'] = self.room
 
-            if key_info != old_key and old_key in self.cl_info:
-                self.cl_info[key_info] = self.cl_info.pop(old_key)
-                self.key_info = key_info
-            else:
-                self.key_info = old_key
+            self.key_info = old_key
+            self.label.info_key = old_key
 
-            self.label.info_key = self.key_info    
-
-            if self.key_info not in self.c_edited:
-                self.c_edited.append(self.key_info)
-
-            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)
+            if old_key not in self.c_edited:
+                self.c_edited.append(old_key)
+                
+            self.cell_to_edit['key'] = getattr(self.label, 'course_key', None)        
             
             # Update occupancy for lab similarly to class
             old_slot = self._slot_key

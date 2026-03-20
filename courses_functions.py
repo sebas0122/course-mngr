@@ -253,16 +253,23 @@ def getClassesList(courses_list, semester):
                     break
 
             if existing_key_base is not None:
-                # Merge: add grupo and id if not already present
-                if grupo not in info_dict[existing_key_base]['grupo']:
-                    info_dict[existing_key_base]['grupo'].append(grupo)
-                if id not in info_dict[existing_key_base]['id']:
-                    info_dict[existing_key_base]['id'].append(id)
-                # Track all codigos that were merged into this entry
-                if 'codigos' not in info_dict[existing_key_base]:
-                    info_dict[existing_key_base]['codigos'] = [info_dict[existing_key_base]['codigo']]
-                if codigo not in info_dict[existing_key_base]['codigos']:
-                    info_dict[existing_key_base]['codigos'].append(codigo)
+                # Mantener alineacion grupo <-> id y conservar codigos fusionados
+                existing = info_dict[existing_key_base]
+
+                if id in existing['id']:
+                    idx_id = existing['id'].index(id)
+                    if idx_id < len(existing['grupo']):
+                        existing['grupo'][idx_id] = grupo
+                    else:
+                        existing['grupo'].append(grupo)
+                else:
+                    existing['id'].append(id)
+                    existing['grupo'].append(grupo)
+
+                if 'codigos' not in existing:
+                    existing['codigos'] = [existing['codigo']]
+                if codigo not in existing['codigos']:
+                    existing['codigos'].append(codigo)
             else:
                 info = {
                     'id': [id],
@@ -389,35 +396,45 @@ def format_slot(day, hour, duration):
 def build_schedule_map(schedule_dict):
     class_map = {}
     for key, data in schedule_dict.items():
-        # Prefer parsing from key (old-format keys are authoritative after drag)
-        
-        parsed = parse_schedule_key(key)
-        if parsed is not None:
-            _, hour, duration, day, _, _ = parsed
-        else:
-            hour = int(data['hora_inicio'])
-            duration = int(data['duracion'])
-            day = data['dia']
+        # key format: codigo_hora_duracion_dia_aula_tipo
+        for idx, group in enumerate(data['grupo']):
+            if idx >= len(data['id']):
+                print(f"WARNING: desalineacion grupo/id en key={key} grupo={group}")
+                continue
+            id_ = data['id'][idx] # ← CAMBIO: usar ID en lugar de (id, nombre, grupo)
 
-        # Ensure types are correct for format_slot
-        hour = int(hour)
-        duration = int(duration)
-        slot = format_slot(day, hour, duration)
-
-        for group in data['grupo']:
-            idx = data['grupo'].index(group)
-            id_ = data['id'][idx] if len(data['id']) > 1 else data['id'][0]
-            class_id = (id_, data['nombre'], group)
+            if id_ != 0:
+                class_id = ("db", id_)
+            else:
+                class_id = (
+                    "new",
+                    data.get('nombre', ''),
+                    group,
+                    data.get('aula', ''),
+                    idx
+                )
+            
             if class_id not in class_map:
                 class_map[class_id] = {
                     "new_schedule": [],
                     "new_professors": data['profesor'],
                     "new_room": data['aula'],
-                    "new_fac": data['facultad'],
-                    "new_dep": data['dependencia'],
-                    "new_mat": data['materia'],
-                    "new_level": data.get('nivel', 0)
+                    "nombre": data['nombre'],
+                    "grupo": group,
+                    "es_lab": data.get('es_lab', False),
+                    "new_fac": data.get('facultad', ''),
+                    "new_dep": data.get('dependencia', ''),
+                    "new_mat": data.get('materia', ''),
+                    "new_level": data.get('nivel', 0),
+                    "db_id": id_,
                 }
+            
+            # Calcular nuevo slot
+            hour = int(data['hora_inicio'])
+            duration = int(data['duracion'])
+            day = data['dia']
+            
+            slot = format_slot(day, int(hour), int(duration))
             if slot not in class_map[class_id]["new_schedule"]:
                 class_map[class_id]["new_schedule"].append(slot)
 
@@ -439,37 +456,64 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
     print("Schedule list to update:", c_edited)
     print("schedule_dict keys:", list(schedule_dict.keys()))
     print("c_edited:", c_edited)
-    only_edited_dict = {k: v for k, v in schedule_dict.items() if k in c_edited}
+
+    # 1) IDs afectados por keys editados
+    edited_ids = set()
+    for k in c_edited:
+        if k in schedule_dict:
+            for id_ in schedule_dict[k].get('id', []):
+                if id_ != 0:
+                    edited_ids.add(id_)
+
+    # 2) Incluir todos los bloques que compartan esos IDs
+    only_edited_dict = {}
+    for k, v in schedule_dict.items():
+        key_is_edited = k in c_edited
+        shares_id = bool(edited_ids.intersection(set(v.get('id', []))))
+        if key_is_edited or shares_id:
+            only_edited_dict[k] = v
+
+    # 3) Warning de integridad (ahora sí, con dict ya construido)
+    for k, v in only_edited_dict.items():
+        if len(v.get('grupo', [])) != len(v.get('id', [])):
+            print(
+                f"WARNING: grupo/id desalineado en {k}: "
+                f"grupos={v.get('grupo')} ids={v.get('id')}"
+            )
+
     print("Only edited schedule dict:", only_edited_dict)
-    # 1. Parse and format
+
+    # 4) Parse y update/insert
     class_map = build_schedule_map(only_edited_dict)
     print("Class map to update:", class_map)
 
-    for (id, subject_name, group), slots in class_map.items():
+    for class_key, info in class_map.items():
+        id_ = info["db_id"]
+
         try:
-            formatted_schedule = normalize_schedule("|".join(slots["new_schedule"]))
+            formatted_schedule = normalize_schedule("|".join(info["new_schedule"]))
         except Exception:
-            formatted_schedule = "|".join(slots["new_schedule"])
+            formatted_schedule = "|".join(info["new_schedule"])
+
         print("--------------------------------------------------------------")
         print("--------------------------------------------------------------")
         print("--------------------------------------------------------------")
         print(f"Formatted schedule: {formatted_schedule}")
         horas = getHoursLong(formatted_schedule)
         print(f"Calculated hours: {horas}")
-        if id != 0:
+
+        if id_ != 0:
             response = (
                 supabase
                 .table("materias")
                 .update({
                     "horario": formatted_schedule,
-                    "profesor": slots["new_professors"],
-                    "aula": slots["new_room"],
+                    "profesor": info["new_professors"],
+                    "aula": info["new_room"],
                     "horas_teoricas": horas if not is_lab else 0,
                     "horas_practicas": horas if is_lab else 0
-                    })
-                .eq("nombre", subject_name)
-                .eq("grupo", group)
-                .eq("es_lab", is_lab)
+                })
+                .eq("id", id_)
                 .execute()
             )
         else:
@@ -477,27 +521,28 @@ def update_schedule_in_db(supabase, schedule_dict, c_edited, is_lab):
                 supabase
                 .table("materias")
                 .insert({
-                    "nombre": subject_name,
-                    "facultad": slots['new_fac'],
-                    "dependencia": slots['new_dep'],
-                    "ide": 'IIE',
-                    "materia": slots['new_mat'],
-                    "grupo": group,
-                    "tipo": 'T-P',
+                    "nombre": info["nombre"],
+                    "facultad": info["new_fac"],
+                    "dependencia": info["new_dep"],
+                    "ide": "IIE",
+                    "materia": info["new_mat"],
+                    "grupo": info["grupo"],
+                    "tipo": "T-P",
                     "es_lab": is_lab,
-                    "nivel": slots['new_level'],
+                    "nivel": info["new_level"],
                     "horas_teoricas": horas if not is_lab else 0,
                     "horas_practicas": horas if is_lab else 0,
                     "horas_tp": 0,
                     "electiva": False,
                     "es_dept": True,
                     "horario": formatted_schedule,
-                    "profesor": slots["new_professors"],
-                    "aula": slots["new_room"]
-                    })
+                    "profesor": info["new_professors"],
+                    "aula": info["new_room"]
+                })
                 .execute()
             )
-        if response.count == None:
+
+        if response.count is None:
             print("Saved successfully!")
         else:
             print("Error saving data.")
