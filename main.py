@@ -13,6 +13,7 @@
 from tkinter import *
 from tkinter import ttk, filedialog
 from unicodedata import name
+from collections import defaultdict
 
 import customtkinter as ctk
 
@@ -1477,111 +1478,364 @@ delete_button.place(x=int(screen_width*(14/15)), y=single_height*14)
 #
 # @note Requires pandas library for Excel export functionality
 def export_to_excel():
-    """Export the current database to an Excel file."""
+    """Open editable payment window and export after admin confirmation."""
+    open_payment_review_window()
+
+
+def _safe_float(value, default=0.0):
+    """Convert an entry value to float, accepting comma decimals."""
+    try:
+        txt = str(value).strip().replace(",", ".")
+        if txt == "":
+            return default
+        return float(txt)
+    except Exception:
+        return default
+
+
+def _build_course_rows_for_excel(courses_list, professors_map):
+    """Build detailed rows for the Materias sheet (informational)."""
+    rows = []
+    for course in courses_list:
+        prof_ids = list(dict.fromkeys(course.profesor or []))
+        if not prof_ids:
+            prof_ids = [0]
+
+        for prof_id in prof_ids:
+            prof = professors_map.get(prof_id)
+            professor_name = prof.nombre if prof else ("SIN PROFESOR" if prof_id == 0 else f"ID:{prof_id}")
+            catedra_str = "SI" if prof and prof.catedra else "NO"
+
+            rows.append({
+                'Nivel': course.nivel,
+                'Facultad': course.facultad,
+                'Dependencia': course.dependencia,
+                'Materia': course.materia,
+                'Nombre': course.nombre,
+                'Grupo': course.grupo,
+                'Aula': course.aula,
+                'Horario': course.horario,
+                'Es Lab': "SI" if getattr(course, "es_lab", False) else "NO",
+                'Horas Teoría': getattr(course, "horas_teoricas", 0),
+                'Horas Lab': getattr(course, "horas_practicas", 0),
+                'Horas TP': getattr(course, "horas_tp", 0),
+                'Cédula': prof_id,
+                'Profesor': professor_name,
+                'Cátedra': catedra_str,
+            })
+
+    return rows
+
+
+def _build_payment_base_by_professor(courses_list, professors_map):
+    """Calculate base payable hours per professor with theory dedup + lab filtering."""
+    theory_professors_by_subject = defaultdict(set)
+    skipped_labs_unknown_professor = 0
+    skipped_labs_only_theory_professor = 0
+
+    # Build subject -> theory professors map (ignore group, as requested)
+    for course in courses_list:
+        if getattr(course, "es_lab", False):
+            continue
+        theory_hours = getattr(course, "horas_teoricas", 0) or 0
+        if theory_hours <= 0:
+            continue
+
+        subject_key = (course.nivel, course.facultad, course.dependencia, course.materia)
+        for prof_id in list(dict.fromkeys(course.profesor or [])):
+            if prof_id in (None, 0):
+                continue
+            theory_professors_by_subject[subject_key].add(prof_id)
+
+    base = {}
+    # Deduplicate theory by real class session, not by group.
+    # Key: (subject_key, prof_id, normalized_schedule)
+    theory_paid_once = set()
+
+    for course in courses_list:
+        subject_key = (course.nivel, course.facultad, course.dependencia, course.materia)
+        prof_ids = list(dict.fromkeys(course.profesor or []))
+        if not prof_ids:
+            continue
+
+        # Theory: pay once per subject-professor pair
+        theory_hours = getattr(course, "horas_teoricas", 0) or 0
+        if not getattr(course, "es_lab", False) and theory_hours > 0:
+            schedule_key = str(getattr(course, "horario", "")).strip().upper()
+            for prof_id in prof_ids:
+                if prof_id in (None, 0):
+                    continue
+
+                paid_key = (subject_key, prof_id, schedule_key)
+                if paid_key in theory_paid_once:
+                    continue
+                theory_paid_once.add(paid_key)
+
+                if prof_id not in base:
+                    prof = professors_map.get(prof_id)
+                    base[prof_id] = {
+                        "cedula": prof_id,
+                        "profesor": prof.nombre if prof else f"ID:{prof_id}",
+                        "catedra": "SI" if prof and prof.catedra else "NO",
+                        "horas_teoria": 0.0,
+                        "horas_lab": 0.0,
+                    }
+                base[prof_id]["horas_teoria"] += float(theory_hours)
+
+        # Labs: pay only non-theory professors for that subject
+        is_lab = bool(getattr(course, "es_lab", False))
+        lab_hours = (getattr(course, "horas_practicas", 0) or 0) + (getattr(course, "horas_tp", 0) or 0)
+        if is_lab and lab_hours > 0:
+            theory_profs = theory_professors_by_subject.get(subject_key, set())
+            valid_prof_ids = [pid for pid in prof_ids if pid not in (None, 0)]
+            lab_only_prof_ids = [pid for pid in valid_prof_ids if pid not in theory_profs]
+
+            if not lab_only_prof_ids:
+                # Intended behavior: avoid paying theory professors again through lab rows.
+                # Also skip rows with unknown professor (0/None) quietly.
+                if not valid_prof_ids:
+                    skipped_labs_unknown_professor += 1
+                else:
+                    skipped_labs_only_theory_professor += 1
+                continue
+
+            # Split lab load evenly if there is more than one lab-only professor.
+            split_hours = float(lab_hours) / len(lab_only_prof_ids)
+
+            for prof_id in lab_only_prof_ids:
+                if prof_id not in base:
+                    prof = professors_map.get(prof_id)
+                    base[prof_id] = {
+                        "cedula": prof_id,
+                        "profesor": prof.nombre if prof else f"ID:{prof_id}",
+                        "catedra": "SI" if prof and prof.catedra else "NO",
+                        "horas_teoria": 0.0,
+                        "horas_lab": 0.0,
+                    }
+                base[prof_id]["horas_lab"] += split_hours
+
+    # Convert to sorted list and include total base hours
+    payment_rows = []
+    for _, row in base.items():
+        row["horas_base_total"] = row["horas_teoria"] + row["horas_lab"]
+        payment_rows.append(row)
+
+    payment_rows.sort(key=lambda r: (str(r["profesor"]).upper(), r["cedula"]))
+
+    if skipped_labs_unknown_professor or skipped_labs_only_theory_professor:
+        print(
+            "INFO pagos labs omitidos: "
+            f"sin profesor válido={skipped_labs_unknown_professor}, "
+            f"solo profesor(es) de teoría={skipped_labs_only_theory_professor}"
+        )
+
+    return payment_rows
+
+
+def _export_excel_with_payment_review(courses_list, payment_rows, payment_entry_rows):
+    """Export courses + reviewed payment summary to Excel."""
     try:
         import pandas as pd
-        
-        # Retrieve all data from the database as Course objects
-        courses_list = retrieveDBTable(supabase_instance, "materias")
-        
-        if not courses_list:
-            print("No data to export")
-            return
-        
-        # Retrieve all professors data
-        professors_list = retrieveDBTable(supabase_instance, "profesores")
-        
-        # Create a mapping of identificacion -> Professor object for quick lookup
-        professors_map = {prof.identificacion: prof for prof in professors_list}
-        
-        # Process each course and format data according to requirements
-        excel_data = []
-        # set for evit duplicates in case of multiple teoric courses with same professor
-        teoricos_exportados = set()
-        con = 0
-        for course in courses_list:
-            for idx, prof_id in enumerate(course.profesor):
-                clave = (prof_id, course.facultad, course.dependencia, course.materia)
-                if idx == 0:
-                    if con < 5:
-                        print(f"clave: {clave}")
-                        print(f"teoricos_exportados: {teoricos_exportados}")
-                        con += 1
-                    if course.horas_teoricas != 0:
-                        if clave in teoricos_exportados:
-                            #print(clave)
-                            horas = 0
-                        else:
-                            teoricos_exportados.add(clave)
-                            horas = course.horas_teoricas
-                            #print(f"Curso: {course.nombre}, teoria, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
-                    elif course.horas_practicas != 0:
-                        horas = course.horas_practicas
-                        # print(f"Curso: {course.nombre}, lab, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
-                    elif course.horas_tp != 0:
-                        horas = course.horas_tp
-                        # print(f"Curso: {course.nombre}, tp, Profesores: {course.profesor}, idx: {idx}, Horas asignadas: {horas}")
-                    else:
-                        horas = 0
-                else:
-                    horas = 0  # Los demás profesores no reciben horas en este registro
 
-                prof = professors_map.get(prof_id)
-                profesor_nombre = prof.nombre if prof else f"ID:{prof_id}"
-                catedra_str = "SI" if prof and prof.catedra else "NO"
-                cupo = getattr(course, 'cupo', 0)
-
-                row = {
-                    'Nivel': course.nivel,
-                    'Facultad': course.facultad,
-                    'Dependencia': course.dependencia,
-                    'Materia': course.materia,
-                    'Nombre': course.nombre,
-                    'Grupo': course.grupo,
-                    'Cupo': cupo,
-                    'Aula': course.aula,
-                    'Horario': course.horario,
-                    'Cédula': prof_id,
-                    'Profesor': profesor_nombre,
-                    'Cátedra': catedra_str,
-                    'Horas': horas
-                }
-                excel_data.append(row)
-        
-        # Create DataFrame with proper column order
-        columns_order = ['Nivel', 'Facultad', 'Dependencia', 'Materia', 'Nombre', 
-                        'Grupo', 'Cupo', 'Aula', 'Horario', 'Cédula', 
-                        'Profesor', 'Cátedra', 'Horas']
-        dataframe = pd.DataFrame(excel_data, columns=columns_order)
-        
-        # Add a temporary column for sorting by course code
-        dataframe['_codigo_sort'] = dataframe['Facultad'].astype(str) + \
-                                     dataframe['Dependencia'].astype(str) + \
-                                     dataframe['Materia'].astype(str)
-        
-        # Sort: first by Nivel (ascending), then by course code to keep same courses together
-        dataframe = dataframe.sort_values(by=['Nivel', '_codigo_sort', 'Grupo'], ascending=[True, True, True])
-
-        # Remove the temporary sorting column
-        dataframe = dataframe.drop(columns=['_codigo_sort'])
-        
-        # Reset index after sorting
-        dataframe = dataframe.reset_index(drop=True)
-        
-        # Open file dialog to choose save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             initialfile="Archivo_Materias_Exportado.xlsx"
         )
-        
-        if file_path:
-            # Export to Excel
-            dataframe.to_excel(file_path, index=False, sheet_name="Materias")
-            print(f"Data exported successfully to {file_path}")
-            print(f"Exported {len(excel_data)} courses")
+        if not file_path:
+            return False
+
+        professors_list = retrieveDBTable(supabase_instance, "profesores")
+        professors_map = {prof.identificacion: prof for prof in professors_list}
+
+        materias_rows = _build_course_rows_for_excel(courses_list, professors_map)
+        materias_df = pd.DataFrame(materias_rows)
+        if not materias_df.empty:
+            materias_df['_codigo_sort'] = (
+                materias_df['Facultad'].astype(str)
+                + materias_df['Dependencia'].astype(str)
+                + materias_df['Materia'].astype(str)
+            )
+            materias_df = materias_df.sort_values(
+                by=['Nivel', '_codigo_sort', 'Grupo', 'Es Lab', 'Profesor'],
+                ascending=[True, True, True, True, True]
+            ).drop(columns=['_codigo_sort']).reset_index(drop=True)
+
+        payment_base_map = {r['cedula']: r for r in payment_rows}
+        pagos_export = []
+
+        for entry in payment_entry_rows:
+            prof_id = entry['cedula']
+            base_row = payment_base_map.get(prof_id, {})
+            horas_editadas = _safe_float(entry['hours_var'].get(), default=0.0)
+            tarifa_hora = _safe_float(entry['rate_var'].get(), default=0.0)
+            ajuste_manual = _safe_float(entry['adj_var'].get(), default=0.0)
+            total = horas_editadas * tarifa_hora + ajuste_manual
+
+            pagos_export.append({
+                'Cédula': prof_id,
+                'Profesor': base_row.get('profesor', f"ID:{prof_id}"),
+                'Cátedra': base_row.get('catedra', 'NO'),
+                'Horas Teoría Base': round(base_row.get('horas_teoria', 0.0), 2),
+                'Horas Lab Base': round(base_row.get('horas_lab', 0.0), 2),
+                'Horas Totales Base': round(base_row.get('horas_base_total', 0.0), 2),
+                'Horas Editadas': round(horas_editadas, 2),
+                'Valor Hora': round(tarifa_hora, 2),
+                'Ajuste Manual': round(ajuste_manual, 2),
+                'Total a Pagar': round(total, 2),
+                'Observación': entry['obs_var'].get().strip(),
+            })
+
+        pagos_df = pd.DataFrame(pagos_export)
+        if not pagos_df.empty:
+            pagos_df = pagos_df.sort_values(by=['Profesor', 'Cédula'], ascending=[True, True]).reset_index(drop=True)
+
+        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+            materias_df.to_excel(writer, index=False, sheet_name="Materias")
+            pagos_df.to_excel(writer, index=False, sheet_name="Pagos_Profesores")
+
+        print(f"Data exported successfully to {file_path}")
+        print(f"Materias exportadas: {len(materias_rows)}")
+        print(f"Pagos exportados: {len(pagos_export)}")
+        return True
     except Exception as e:
         print(f"Error exporting to Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def open_payment_review_window():
+    """Open admin review window with preloaded per-professor payment base."""
+    try:
+        courses_list = retrieveDBTable(supabase_instance, "materias")
+        if not courses_list:
+            print("No data to export")
+            return
+
+        professors_list = retrieveDBTable(supabase_instance, "profesores")
+        professors_map = {prof.identificacion: prof for prof in professors_list}
+
+        payment_rows = _build_payment_base_by_professor(courses_list, professors_map)
+        if not payment_rows:
+            print("No se encontraron pagos base por profesor para exportar.")
+            return
+
+        review_win = Toplevel(window)
+        review_win.title("Revisión de Pagos por Profesor")
+        review_win.geometry(f"{int(screen_width*0.88)}x{int(screen_height*0.80)}")
+
+        title_label = ctk.CTkLabel(
+            review_win,
+            text="Pagos por Profesor - Revisión y Ajustes",
+            font=("Arial", 20, "bold"),
+            text_color="black"
+        )
+        title_label.pack(pady=(14, 8))
+
+        headers_frame = ctk.CTkFrame(review_win, fg_color="transparent")
+        headers_frame.pack(fill="x", padx=12)
+
+        headers = [
+            ("Cédula", 110),
+            ("Profesor", 220),
+            ("Cátedra", 80),
+            ("Horas Teoría", 100),
+            ("Horas Lab", 90),
+            ("Horas Base", 90),
+            ("Horas Editadas", 100),
+            ("Valor Hora", 90),
+            ("Ajuste", 90),
+            ("Observación", 250),
+        ]
+
+        for col, (title, width) in enumerate(headers):
+            lbl = ctk.CTkLabel(headers_frame, text=title, width=width, text_color="black")
+            lbl.grid(row=0, column=col, padx=3, pady=2, sticky="w")
+
+        scroll_frame = ctk.CTkScrollableFrame(review_win, width=int(screen_width * 0.84), height=int(screen_height * 0.56))
+        scroll_frame.pack(fill="both", expand=True, padx=12, pady=8)
+
+        payment_entry_rows = []
+
+        for row_idx, row in enumerate(payment_rows):
+            ctk.CTkLabel(scroll_frame, text=str(row['cedula']), width=110, text_color="black").grid(row=row_idx, column=0, padx=3, pady=2, sticky="w")
+            ctk.CTkLabel(scroll_frame, text=str(row['profesor']), width=220, text_color="black").grid(row=row_idx, column=1, padx=3, pady=2, sticky="w")
+            ctk.CTkLabel(scroll_frame, text=str(row['catedra']), width=80, text_color="black").grid(row=row_idx, column=2, padx=3, pady=2, sticky="w")
+            ctk.CTkLabel(scroll_frame, text=f"{row['horas_teoria']:.2f}", width=100, text_color="black").grid(row=row_idx, column=3, padx=3, pady=2, sticky="w")
+            ctk.CTkLabel(scroll_frame, text=f"{row['horas_lab']:.2f}", width=90, text_color="black").grid(row=row_idx, column=4, padx=3, pady=2, sticky="w")
+            ctk.CTkLabel(scroll_frame, text=f"{row['horas_base_total']:.2f}", width=90, text_color="black").grid(row=row_idx, column=5, padx=3, pady=2, sticky="w")
+
+            hours_var = StringVar(value=f"{row['horas_base_total']:.2f}")
+            rate_var = StringVar(value="0")
+            adj_var = StringVar(value="0")
+            obs_var = StringVar(value="")
+
+            ctk.CTkEntry(scroll_frame, textvariable=hours_var, width=100).grid(row=row_idx, column=6, padx=3, pady=2, sticky="w")
+            ctk.CTkEntry(scroll_frame, textvariable=rate_var, width=90).grid(row=row_idx, column=7, padx=3, pady=2, sticky="w")
+            ctk.CTkEntry(scroll_frame, textvariable=adj_var, width=90).grid(row=row_idx, column=8, padx=3, pady=2, sticky="w")
+            ctk.CTkEntry(scroll_frame, textvariable=obs_var, width=250).grid(row=row_idx, column=9, padx=3, pady=2, sticky="w")
+
+            payment_entry_rows.append({
+                "cedula": row['cedula'],
+                "hours_var": hours_var,
+                "rate_var": rate_var,
+                "adj_var": adj_var,
+                "obs_var": obs_var,
+            })
+
+        footer_frame = ctk.CTkFrame(review_win, fg_color="transparent")
+        footer_frame.pack(fill="x", padx=12, pady=(4, 12))
+
+        def confirm_and_export():
+            for row in payment_entry_rows:
+                horas_editadas = _safe_float(row['hours_var'].get(), default=-1)
+                valor_hora = _safe_float(row['rate_var'].get(), default=-1)
+                ajuste = _safe_float(row['adj_var'].get(), default=0)
+
+                if horas_editadas < 0:
+                    print(f"Valor inválido en Horas Editadas para cédula {row['cedula']}")
+                    return
+                
+                if valor_hora < 0:
+                    print(f"Valor inválido en Valor Hora para cédula {row['cedula']}")
+                    return
+                if ajuste < 0:
+                    print(f"Valor inválido en Ajuste Manual para cédula {row['cedula']}")
+                    return
+
+            ok = _export_excel_with_payment_review(courses_list, payment_rows, payment_entry_rows)
+            if ok:
+                review_win.destroy()
+
+        ctk.CTkButton(
+            footer_frame,
+            text="Confirmar y Exportar a Excel",
+            command=confirm_and_export,
+            fg_color="lightgreen",
+            text_color="black",
+            hover_color="#97d798",
+            width=280,
+            height=42
+        ).pack(side=RIGHT, padx=6)
+
+        ctk.CTkButton(
+            footer_frame,
+            text="Cancelar",
+            command=review_win.destroy,
+            fg_color="lightgray",
+            text_color="black",
+            hover_color="#d2d2d2",
+            width=120,
+            height=42
+        ).pack(side=RIGHT, padx=6)
+
+        review_win.transient(window)
+        review_win.grab_set()
+        window.wait_window(review_win)
+
+    except Exception as e:
+        print(f"Error al abrir la ventana de revisión de pagos: {e}")
         import traceback
         traceback.print_exc()
 
